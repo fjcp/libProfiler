@@ -23,7 +23,7 @@ void myPrintf( const char *szText )
 
 void myFunction()
 {
-    PROFILER_START(myFunction);
+    PROFILER_START_F();
     float v = 0;
     for(int i = 0;i<1000000;i++)
         v += cosf(static_cast<float>(rand()));
@@ -36,7 +36,7 @@ int main(int argc, const char * argv[])
 {
     PROFILER_ENABLE;
 
-    PROFILER_START(Main);
+    PROFILER_START_F();
 
     std::cout << "Hello, World!\n";
     myFunction();

@@ -357,7 +357,8 @@ void LogProfiler();
 
 #define PROFILER_ENABLE Zprofiler_enable()
 #define PROFILER_DISABLE Zprofiler_disable()
-#define PROFILER_START(x) Zprofiler_start(QUOTE(x))
+#define PROFILER_START(x) Zprofiler_start(x)
+#define PROFILER_START_F() Zprofiler_start(__FUNCTION__)
 #define PROFILER_END() Zprofiler_end()
 
 #else
