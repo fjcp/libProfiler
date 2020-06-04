@@ -35,19 +35,19 @@ void myFunction()
 int main(int argc, const char * argv[])
 {
     PROFILER_ENABLE;
-    
+
     PROFILER_START(Main);
 
     std::cout << "Hello, World!\n";
     myFunction();
-    myFunction();    
+    myFunction();
 
     PROFILER_END();
 
     LogProfiler();
-    
+
     PROFILER_DISABLE;
-    
+
     return 0;
 }
 
