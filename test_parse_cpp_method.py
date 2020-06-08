@@ -1,4 +1,8 @@
 import re
+import string
+import sys
+import glob
+import os
 
 def string_to_string_list(string):
     return string.split("\n")
@@ -112,7 +116,49 @@ MACRO_FINAL();
 """
     assert string_list_to_string(file_lines_out) == cpp_code_out
 
+def test_method_one_line_empty_body():
+    cpp_code_in = """\
+void A::B() {}
+"""
+    file_lines_in = string_to_string_list(cpp_code_in)
+    file_lines_out = add_cpp_include_and_macros(
+        file_lines_in, "MyInclude.h", "MACRO_INITIAL", "MACRO_FINAL"
+    )
+
+    cpp_code_out = """\
+#include "MyInclude.h"
+void A::B() {}
+"""
+    assert string_list_to_string(file_lines_out) == cpp_code_out
+
+def test_method_several_lines():
+    cpp_code_in = """\
+void
+A::B(int foo,
+     int bar)
+{
+
+}
+"""
+    file_lines_in = string_to_string_list(cpp_code_in)
+    file_lines_out = add_cpp_include_and_macros(
+        file_lines_in, "MyInclude.h", "MACRO_INITIAL", "MACRO_FINAL"
+    )
+
+    cpp_code_out = """\
+#include "MyInclude.h"
+void
+A::B(int foo,
+     int bar)
+{
+MACRO_INITIAL();
+
+MACRO_FINAL();
+}
+"""
+    assert string_list_to_string(file_lines_out) == cpp_code_out
+
 
 if __name__ == "__main__":
-    #pass
-    test_method_one_line()
+    pass
+    #test_method_one_line()
