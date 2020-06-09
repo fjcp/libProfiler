@@ -7,30 +7,12 @@
 //
 
 #include <iostream>
-#include <math.h>
-
-void myPrintf( const char *szText )
-{
-    printf("Profiler:%s", szText);
-}
-
 
 #define USE_PROFILER 1
 #define LIB_PROFILER_IMPLEMENTATION
 #define LIB_PROFILER_PRINTF myPrintf
 #include "libProfiler.h"
-
-
-void myFunction()
-{
-    PROFILER_START_F();
-    float v = 0;
-    for(int i = 0;i<1000000;i++)
-        v += cosf(static_cast<float>(rand()));
-
-    printf("v = %5.4f\n", v);
-    PROFILER_END();
-}
+#include "MyClass.h"
 
 int main(int argc, const char * argv[])
 {
@@ -39,8 +21,8 @@ int main(int argc, const char * argv[])
     PROFILER_START_F();
 
     std::cout << "Hello, World!\n";
-    myFunction();
-    myFunction();
+    MyClass::myFunction1();
+    MyClass::myFunction1();
 
     PROFILER_END();
 

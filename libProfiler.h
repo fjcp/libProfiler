@@ -55,18 +55,22 @@
 // Let's see an example code :
 //
 //
-// #include <iostream>
-// #include <math.h>
+
+#pragma once
+#include <boost/scope_exit.hpp>
+#include <iostream>
+#include <iostream>
+#include <math.h>
 //
-// void myPrintf( const char *szText )
-// {
-//     printf("Profiler:%s", szText);
-// }
+inline void myPrintf( const char *szText )
+{
+    printf("Profiler:%s", szText);
+}
 //
 //
-// #define USE_PROFILER 1
+#define USE_PROFILER 1
 // #define LIB_PROFILER_IMPLEMENTATION
-// #define LIB_PROFILER_PRINTF myPrintf
+#define LIB_PROFILER_PRINTF myPrintf
 // #include "libProfiler.h"
 //
 //
@@ -360,6 +364,11 @@ void LogProfiler();
 #define PROFILER_START(x) Zprofiler_start(x)
 #define PROFILER_START_F() Zprofiler_start(__FUNCTION__)
 #define PROFILER_END() Zprofiler_end()
+
+#define PROFILER_F() \
+  Zprofiler_start(__FUNCTION__);    \
+  BOOST_SCOPE_EXIT(void){Zprofiler_end();} BOOST_SCOPE_EXIT_END
+
 
 #else
 
