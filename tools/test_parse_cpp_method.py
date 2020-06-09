@@ -35,7 +35,8 @@ def add_cpp_macros_in_methods(file_lines, initial_macro, final_macro):
         if method_definition and not final_macro_pending and line.endswith('{\n'):
             file_lines_out.append(initial_macro + "();\n")
             method_definition = False
-            final_macro_pending = True
+            if len(final_macro) > 0:
+                final_macro_pending = True
 
         if line == "}\n" and final_macro_pending:
             file_lines_out.insert(len(file_lines_out) - 1, final_macro + "();\n")
@@ -266,7 +267,7 @@ if __name__ == "__main__":
                     output_file = open(full_file_name, 'w')
 
                     output_lines = add_cpp_include_and_macros(
-                        input_lines,'libProfiler.h','PROFILER_START_F','PROFILER_END'
+                        input_lines,'libProfiler.h','PROFILER_F',''
                     )
                     output_file.writelines(output_lines)
                     output_file.close()
