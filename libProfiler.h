@@ -269,10 +269,10 @@ inline void LOG(const char *format,...)
 #if IS_OS_WINDOWS
 #include <windows.h>
 typedef CRITICAL_SECTION ZCriticalSection_t;
-inline char* ZGetCurrentDirectory(int bufLength, char *pszDest)
-{
-    return (char*)GetCurrentDirectoryA(bufLength, pszDest);
-}
+//inline char* ZGetCurrentDirectory(int bufLength, char *pszDest)
+//{
+//    return (char*)GetCurrentDirectoryA(bufLength, pszDest);
+//}
 
 #elif IS_OS_LINUX
 #include <pthread.h>

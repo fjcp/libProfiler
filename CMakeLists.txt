@@ -16,6 +16,7 @@ include_directories(.
 add_executable(libProfiler_test
   main.cpp
   libProfiler.h
+  libProfilerMain.h
   MyClass.cpp
   MyClass.h
 )

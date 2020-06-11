@@ -7,29 +7,17 @@
 //
 
 #include <iostream>
-
-#define USE_PROFILER 1
-#define LIB_PROFILER_IMPLEMENTATION
-#define LIB_PROFILER_PRINTF myPrintf
-#include "libProfiler.h"
+#include "libProfilerMain.h"
 #include "MyClass.h"
 
 int main(int argc, const char * argv[])
 {
-    PROFILER_ENABLE;
+  PROFILER_MAIN();
 
-    PROFILER_START_F();
+  std::cout << "Hello, World!\n";
+  MyClass::myFunction1();
+  MyClass::myFunction1();
 
-    std::cout << "Hello, World!\n";
-    MyClass::myFunction1();
-    MyClass::myFunction1();
-
-    PROFILER_END();
-
-    LogProfiler();
-
-    PROFILER_DISABLE;
-
-    return 0;
+  return 0;
 }
 
