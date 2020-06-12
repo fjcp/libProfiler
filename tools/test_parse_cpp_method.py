@@ -36,7 +36,7 @@ def add_cpp_macros_in_methods(file_lines, initial_macro):
         ) and re.search(r"[a-zA-Z_][a-zA-Z0-9_]*::[a-zA-Z_][a-zA-Z0-9_]*\(.*", line):
             method_definition = True
 
-        if method_definition and line.endswith("{\n"):
+        if method_definition and line.rstrip(" \n").endswith("{"):
             file_lines_out.append(initial_macro + "();\n")
             method_definition = False
 
@@ -212,6 +212,23 @@ class TeamCityPrinter : public ::testing::EmptyTestEventListener {
 #include "MyInclude.h"
 class TeamCityPrinter : public ::testing::EmptyTestEventListener {
 };
+"""
+    assert process_code(cpp_code_in) == cpp_code_out
+
+def test_method_with_initialization_and_trailing_spaces():
+    cpp_code_in = """\
+A::B(int foo):
+ _member(0)
+{ 
+}"""
+
+    cpp_code_out = """\
+#include "MyInclude.h"
+A::B(int foo):
+ _member(0)
+{ 
+MACRO_INITIAL();
+}
 """
     assert process_code(cpp_code_in) == cpp_code_out
 

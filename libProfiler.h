@@ -267,6 +267,9 @@ inline void LOG(const char *format,...)
 
 // Critical Section
 #if IS_OS_WINDOWS
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 typedef CRITICAL_SECTION ZCriticalSection_t;
 //inline char* ZGetCurrentDirectory(int bufLength, char *pszDest)
