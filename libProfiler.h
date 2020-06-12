@@ -173,7 +173,7 @@ inline void myPrintf( const char *szText )
 #   define IS_OS_LINUX      0
 #   define IS_OS_MACOSX     0
 #   define PLATFORM_OS      PLATFORM_OS_WINDOWS
-#   pragma message("Platform OS is Windows.")
+//#   pragma message("Platform OS is Windows.")
 #elif defined(__linux__) || defined( LINUX )
 #   define IS_OS_WINDOWS    0
 #   define IS_OS_LINUX      1
@@ -199,7 +199,7 @@ inline void myPrintf( const char *szText )
 #   define PLATFORM_COMPILER_VERSION    _MSC_VER
 #   define IS_COMPILER_MSVC     1
 #   define IS_COMPILER_GCC      0
-#   pragma message("Platform Compiler is Microsoft Visual C++.")
+//#   pragma message("Platform Compiler is Microsoft Visual C++.")
 #elif defined( __GNUC__ )
 #   define PLATFORM_COMPILER            PLATFORM_COMPILER_GCC
 #   define PLATFORM_COMPILER_VERSION    (__GNUC__ * 10000 + __GNUC_MINOR__ * 100)
@@ -218,7 +218,7 @@ inline void myPrintf( const char *szText )
 #   define IS_PLATFORM_64BIT                1
 #   define IS_PLATFORM_32BIT                0
 #   define PLATFORM_MEMORY_ADDRESS_SPACE    PLATFORM_MEMORY_ADDRESS_SPACE_64BIT
-#   pragma message("Using 64bit memory address space.")
+//#   pragma message("Using 64bit memory address space.")
 #else
 #   define IS_PLATFORM_64BIT                0
 #   define IS_PLATFORM_32BIT                1
