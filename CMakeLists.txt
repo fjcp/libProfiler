@@ -23,5 +23,5 @@ add_executable(libProfiler_test
 )
 
 target_link_libraries(libProfiler_test
-  winmm
+  #  winmm
 )

@@ -27,7 +27,7 @@ main(int argc, const char* argv[])
 
   std::vector<int> v2{ 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 };
 
-  std::copy(v2.cbegin(), v2.cend(), std::back_inserter(v));
+//  std::copy(v2.cbegin(), v2.cend(), std::back_inserter(v));
   std::for_each(
     std::execution::par, v.begin(), v.end(), [](const auto& item) { MyClass::myFunction2(); });
 

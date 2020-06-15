@@ -57,8 +57,6 @@
 
 #pragma once
 #include <boost/scope_exit.hpp>
-#include <iostream>
-#include <math.h>
 //
 inline void
 myPrintf(const char* szText)
@@ -145,9 +143,9 @@ myPrintf(const char* szText)
 // includes
 
 #include <algorithm>
-#include <map>
 #include <cstdarg>
 #include <cstdio>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -397,7 +395,7 @@ startHighResolutionTimer(void);
 
 #if IS_OS_WINDOWS
 // Create A Structure For The Timer Information
-struct
+inline struct
 {
   __int64 frequency;                 // Timer Frequency
   float resolution;                  // Timer Resolution
@@ -426,17 +424,17 @@ typedef struct stGenProfilerData
 typedef std::vector<tdstGenProfilerData> tdCallStackType;
 
 //  Hold the sequence of profiler_starts
-std::map<std::string, tdstGenProfilerData> mapProfilerGraph;
+inline std::map<std::string, tdstGenProfilerData> mapProfilerGraph;
 
 // Hold profiler data vector in function of the thread
-map<unsigned long, tdCallStackType> mapCallsByThread;
+inline map<unsigned long, tdCallStackType> mapCallsByThread;
 
 // Critical section
-ZCriticalSection_t* gProfilerCriticalSection;
+inline ZCriticalSection_t* gProfilerCriticalSection;
 //
 // Activate the profiler
 //
-bool
+inline bool
 Zprofiler_enable()
 {
   // Initialize the timer
@@ -450,7 +448,7 @@ Zprofiler_enable()
 //
 // Deactivate the profiler
 //
-void
+inline void
 Zprofiler_disable()
 {
   // Dump to file
@@ -480,7 +478,7 @@ GetCurrentThreadId()
 //
 // Start the profiling of a bunch of code
 //
-void
+inline void
 Zprofiler_start(const char* profile_name)
 {
   LockCriticalSection(gProfilerCriticalSection);
@@ -495,8 +493,7 @@ Zprofiler_start(const char* profile_name)
 
   // Find or add callstack
   tdCallStackType TmpCallStack;
-  map<unsigned long, tdCallStackType>::iterator IterCallsByThreadMap =
-    mapCallsByThread.find(ulThreadId);
+  auto IterCallsByThreadMap = mapCallsByThread.find(ulThreadId);
   if (IterCallsByThreadMap == mapCallsByThread.end())
   {
     // Not found. So insert the new pair
@@ -542,14 +539,13 @@ Zprofiler_start(const char* profile_name)
 //
 // Stop the profiling of a bunch of code
 //
-void
+inline void
 Zprofiler_end()
 {
-  unsigned long ulThreadId = GetCurrentThreadId();
+  const unsigned long ulThreadId = GetCurrentThreadId();
 
   // Retrieve the right entry in function of the threadId
-  auto IterCallsByThreadMap =
-    mapCallsByThread.find(ulThreadId);
+  const auto IterCallsByThreadMap = mapCallsByThread.find(ulThreadId);
 
   // Check if vector is empty
   if ((*IterCallsByThreadMap).second.empty())
@@ -560,15 +556,13 @@ Zprofiler_end()
 
   LockCriticalSection(gProfilerCriticalSection);
 
-  tdstGenProfilerData GenProfilerData = (*IterCallsByThreadMap).second[
-    (*IterCallsByThreadMap).second.size() - 1];
+  auto GenProfilerData = (*IterCallsByThreadMap).second[(*IterCallsByThreadMap).second.size() - 1];
 
   // Compute elapsed time
   GenProfilerData.elapsedTime += startHighResolutionTimer() - GenProfilerData.lastTime;
   GenProfilerData.totalTime += GenProfilerData.elapsedTime;
 
-  const auto IterMap = mapProfilerGraph.
-    find(GenProfilerData.szBunchCodeName);
+  const auto IterMap = mapProfilerGraph.find(GenProfilerData.szBunchCodeName);
   if (IterMap != mapProfilerGraph.end())
   {
     (*IterMap).second.nbCalls++;
@@ -640,7 +634,6 @@ LogProfiler()
 
   // Map for Thread Ids
   std::map<std::string, int> ThreadIdsCount;
-  std::map<std::string, int>::iterator IterThreadIdsCount;
   ThreadIdsCount.clear();
 
   // Vector for callstack
@@ -682,7 +675,7 @@ LogProfiler()
   // Retrieve the number of thread ids
   // unsigned long nbThreadIds  = mapProfilerGraph.size();
 
-  IterThreadIdsCount = ThreadIdsCount.begin();
+  auto IterThreadIdsCount = ThreadIdsCount.begin();
   for (unsigned long nbThread = 0; nbThread < ThreadIdsCount.size(); nbThread++)
   {
     sprintf(szThreadId, "%s", IterThreadIdsCount->first.c_str());
@@ -712,14 +705,14 @@ LogProfiler()
           }
         }
 
-        // Get times and fill in the dislpay string
+        // Get times and fill in the display string
         sprintf(textLine,
                 "| %12.4f | %12.4f | %12.4f | %12.4f |%6d  | ",
                 (*IterTmpCallStack).totalTime,
                 (*IterTmpCallStack).averageTime,
                 (*IterTmpCallStack).minTime,
                 (*IterTmpCallStack).maxTime,
-                (int)(*IterTmpCallStack).nbCalls);
+                static_cast<int>((*IterTmpCallStack).nbCalls));
 
         // Get the last start_profile_name in the string
         tmpString = strrchr((*IterTmpCallStack).szBunchCodeName, '|') + 1;
@@ -727,8 +720,8 @@ LogProfiler()
         IterMapCalls = mapCalls.find(tmpString);
         if (IterMapCalls != mapCalls.end())
         {
-          auto minTime = (*IterMapCalls).second.minTime;
-          auto maxTime = (*IterMapCalls).second.maxTime;
+          const auto minTime = (*IterMapCalls).second.minTime;
+          const auto maxTime = (*IterMapCalls).second.maxTime;
 
           if ((*IterTmpCallStack).minTime < minTime)
           {
@@ -746,7 +739,7 @@ LogProfiler()
 
         else
         {
-          tdstGenProfilerData tgt; 
+          tdstGenProfilerData tgt;
           if (strstr(tmpString, szThreadId))
           {
             strcpy(tgt.szBunchCodeName, tmpString);
@@ -773,7 +766,7 @@ LogProfiler()
         for (i = 0; i < nbSeparator; i++)
           strcat(textLine, "+");
 
-        // Remove the thred if from the string
+        // Remove the thread if from the string
         if (strstr(tmpString, _THREADID_NAME_SEPARATOR_))
         {
           tmpString += strlen(szThreadId) + 1;
@@ -819,7 +812,7 @@ LogProfiler()
               (*IterMapCalls).second.averageTime,
               (*IterMapCalls).second.minTime,
               (*IterMapCalls).second.maxTime,
-              (int)(*IterMapCalls).second.nbCalls,
+              static_cast<int>((*IterMapCalls).second.nbCalls),
               (*IterMapCalls).second.szBunchCodeName + strlen(szThreadId) + 1);
         }
       }
@@ -836,35 +829,25 @@ LogProfiler()
 #if IS_OS_WINDOWS
 
 // Initialize Our Timer (Get It Ready)
-void
+inline void
 TimerInit()
 {
   memset(&timer, 0, sizeof(timer));
 
   // Check to see if a performance counter is available
   // If one is available the timer frequency will be updated
-  if (!QueryPerformanceFrequency((LARGE_INTEGER*)&timer.frequency))
-  {
-    // No performace counter available
-    timer.performance_timer = false;               // Set performance timer to false
-    timer.mm_timer_start = timeGetTime();          // Use timeGetTime() to get current time
-    timer.resolution = 1.0f / 1000.0f;             // Set our timer resolution to .001f
-    timer.frequency = 1000;                        // Set our timer frequency to 1000
-    timer.mm_timer_elapsed = timer.mm_timer_start; // Set the elapsed time to the current time
-  }
-  else
-  {
-    // Performance counter is available, use it instead of the multimedia timer
-    // Get the current time and store it in performance_timer_start
-    QueryPerformanceCounter((LARGE_INTEGER*)&timer.performance_timer_start);
-    timer.performance_timer = true; // Set performance timer to true
+  QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&timer.frequency));
+  // Performance counter is available, use it instead of the multimedia timer
+  // Get the current time and store it in performance_timer_start
+  QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&timer.performance_timer_start));
+  timer.performance_timer = true; // Set performance timer to true
 
-    // Calculate the timer resolution using the timer frequency
-    timer.resolution = (float)(((double)1.0f) / ((double)timer.frequency));
+  // Calculate the timer resolution using the timer frequency
+  timer.resolution =
+    static_cast<float>(static_cast<double>(1.0f) / static_cast<double>(timer.frequency));
 
-    // Set the elapsed time to the current time
-    timer.performance_timer_elapsed = timer.performance_timer_start;
-  }
+  // Set the elapsed time to the current time
+  timer.performance_timer_elapsed = timer.performance_timer_start;
 }
 
 // platform specific get hires times...
@@ -872,23 +855,12 @@ inline double
 startHighResolutionTimer()
 {
   __int64 time;
+  // Grab the current performance time
+  QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&time));
 
-  // Are we using the performance timer?
-  if (timer.performance_timer)
-  {
-    // Grab the current performance time
-    QueryPerformanceCounter((LARGE_INTEGER*)&time);
-
-    // Return the current time minus the start time multiplied
-    // by the resolution and 1000 (To Get MS)
-    return ((double)(time - timer.performance_timer_start) * timer.resolution) * 1000.0f;
-  }
-  else
-  {
-    // Return the current time minus the start time multiplied
-    // by the resolution and 1000 (To Get MS)
-    return ((double)(timeGetTime() - timer.mm_timer_start) * timer.resolution) * 1000.0f;
-  }
+  // Return the current time minus the start time multiplied
+  // by the resolution and 1000 (To Get MS)
+  return (static_cast<double>(time - timer.performance_timer_start) * timer.resolution) * 1000.0f;
 }
 #elif IS_OS_MACOSX
 
