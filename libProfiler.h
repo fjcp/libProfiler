@@ -628,7 +628,7 @@ void Zprofiler_end( )
 
 bool MyDataSortPredicate(const tdstGenProfilerData un, const tdstGenProfilerData deux)
 {
-    return un.szBunchCodeName > deux.szBunchCodeName;
+    return std::string(un.szBunchCodeName) < std::string(deux.szBunchCodeName);
 }
 
 void LogProfiler()
@@ -668,6 +668,11 @@ void LogProfiler()
 
     // Sort the vector
     std::sort(tmpCallStack.begin(), tmpCallStack.end(), MyDataSortPredicate);
+
+    auto it_max = std::max_element(tmpCallStack.begin(), tmpCallStack.end(), [](const tdstGenProfilerData& data1, const tdstGenProfilerData& data2){
+        return data1.totalTime < data2.totalTime;} );
+
+    const auto MAX_TOTAL_TIME = it_max->totalTime;
 
     // Create a map with thread Ids
     for(IterTmpCallStack=tmpCallStack.begin(); IterTmpCallStack!=tmpCallStack.end(); ++IterTmpCallStack)
@@ -774,7 +779,7 @@ void LogProfiler()
 
                 // Copy white space in the string to format the display
                 // in function of the hierarchy
-                for(i=0;i<nbSeparator;i++) strcat(textLine, "  ");
+                for(i=0;i<nbSeparator;i++) strcat(textLine, "+");
 
                 // Remove the thred if from the string
                 if( strstr(tmpString, _THREADID_NAME_SEPARATOR_) )
@@ -783,7 +788,10 @@ void LogProfiler()
                 }
 
                 // Display the name of the bunch code profiled
-                LOG("%s%s\n", textLine, tmpString );
+                if (IterTmpCallStack->totalTime > MAX_TOTAL_TIME/100.)
+                {
+                  LOG("%s%s\n", textLine, tmpString );
+                }
             }
         }
         LOG("_______________________________________________________________________________________\n\n");
@@ -809,13 +817,16 @@ void LogProfiler()
             tmpString = (*IterMapCalls).second.szBunchCodeName;
             if( strstr(tmpString, szThreadId) )
             {
-                LOG( "| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
-                    (*IterMapCalls).second.totalTime,
-                    (*IterMapCalls).second.averageTime,
-                    (*IterMapCalls).second.minTime,
-                    (*IterMapCalls).second.maxTime,
-                    (int)(*IterMapCalls).second.nbCalls,
-                    (*IterMapCalls).second.szBunchCodeName+strlen(szThreadId)+1);
+                if ((*IterMapCalls).second.totalTime > MAX_TOTAL_TIME/100.)
+                {
+                    LOG( "| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
+                        (*IterMapCalls).second.totalTime,
+                        (*IterMapCalls).second.averageTime,
+                        (*IterMapCalls).second.minTime,
+                        (*IterMapCalls).second.maxTime,
+                        (int)(*IterMapCalls).second.nbCalls,
+                        (*IterMapCalls).second.szBunchCodeName+strlen(szThreadId)+1);
+                }
             }
         }
         LOG( "_______________________________________________________________________________________\n\n");
