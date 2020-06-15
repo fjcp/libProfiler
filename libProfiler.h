@@ -146,8 +146,8 @@ myPrintf(const char* szText)
 
 #include <algorithm>
 #include <map>
-#include <stdarg.h>
-#include <stdio.h>
+#include <cstdarg>
+#include <cstdio>
 #include <string>
 #include <vector>
 
@@ -269,10 +269,6 @@ LOG(const char* format, ...)
 #endif
 #include <windows.h>
 typedef CRITICAL_SECTION ZCriticalSection_t;
-// inline char* ZGetCurrentDirectory(int bufLength, char *pszDest)
-//{
-//    return (char*)GetCurrentDirectoryA(bufLength, pszDest);
-//}
 
 #elif IS_OS_LINUX
 #include <pthread.h>
@@ -298,7 +294,6 @@ NewCriticalSection()
 {
 #if IS_OS_LINUX
   ZCriticalSection_t* cs = new pthread_mutex_t;
-  //(*cs) = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_init(cs, NULL);
   return cs;
 #elif IS_OS_MACOSX
@@ -399,14 +394,6 @@ TimerInit();
 //#if defined(WIN32)
 double
 startHighResolutionTimer(void);
-/*
- #elif defined(_MAC_)
- void  startHighResolutionTimer(unsigned long time[2]);
- #else
- void  startHighResolutionTimer(unsigned long time[2]);
- #endif
- */
-// unsigned long  endHighResolutionTimer(unsigned long time[2]);
 
 #if IS_OS_WINDOWS
 // Create A Structure For The Timer Information
@@ -446,15 +433,6 @@ map<unsigned long, tdCallStackType> mapCallsByThread;
 
 // Critical section
 ZCriticalSection_t* gProfilerCriticalSection;
-
-// Critical section functions
-/*
- void NewCriticalSection( void );
- void DestroyCriticalSection( void );
- void LockCriticalSection( void );
- void UnLockCriticalSection( void );
- */
-
 //
 // Activate the profiler
 //
@@ -466,14 +444,6 @@ Zprofiler_enable()
 
   // Create the mutex
   gProfilerCriticalSection = NewCriticalSection();
-
-  // Clear maps
-  /*
-   mapCallsByThread.clear();
-   mapProfilerGraph.clear();
-   mapCallsByThread.clear();
-   */
-
   return true;
 }
 
@@ -484,7 +454,6 @@ void
 Zprofiler_disable()
 {
   // Dump to file
-  // Zprofiler_dumpToFile( DUMP_FILENAME );
 
   // Clear maps
   mapCallsByThread.clear();
@@ -579,7 +548,7 @@ Zprofiler_end()
   unsigned long ulThreadId = GetCurrentThreadId();
 
   // Retrieve the right entry in function of the threadId
-  map<unsigned long, tdCallStackType>::iterator IterCallsByThreadMap =
+  auto IterCallsByThreadMap =
     mapCallsByThread.find(ulThreadId);
 
   // Check if vector is empty
@@ -591,25 +560,22 @@ Zprofiler_end()
 
   LockCriticalSection(gProfilerCriticalSection);
 
-  // Retrieve the last element from the callstack vector
-  tdstGenProfilerData GenProfilerData;
-  GenProfilerData = (*IterCallsByThreadMap).second[(*IterCallsByThreadMap).second.size() - 1];
+  tdstGenProfilerData GenProfilerData = (*IterCallsByThreadMap).second[
+    (*IterCallsByThreadMap).second.size() - 1];
 
   // Compute elapsed time
   GenProfilerData.elapsedTime += startHighResolutionTimer() - GenProfilerData.lastTime;
   GenProfilerData.totalTime += GenProfilerData.elapsedTime;
 
-  // Find if this entry exists in the map
-  std::map<std::string, tdstGenProfilerData>::iterator IterMap;
-  IterMap = mapProfilerGraph.find(GenProfilerData.szBunchCodeName);
+  const auto IterMap = mapProfilerGraph.
+    find(GenProfilerData.szBunchCodeName);
   if (IterMap != mapProfilerGraph.end())
   {
     (*IterMap).second.nbCalls++;
 
     // Retrieve time information to compute min and max time
-    double minTime = (*IterMap).second.minTime;
-    double maxTime = (*IterMap).second.maxTime;
-    // double totalTime  = (*IterMap).second.totalTime;
+    const auto minTime = (*IterMap).second.minTime;
+    const auto maxTime = (*IterMap).second.maxTime;
 
     if (GenProfilerData.elapsedTime < minTime)
     {
@@ -648,13 +614,13 @@ Zprofiler_end()
 // Dump all data in a file
 //
 
-bool
+inline bool
 MyDataSortPredicate(const tdstGenProfilerData un, const tdstGenProfilerData deux)
 {
   return std::string(un.szBunchCodeName) < std::string(deux.szBunchCodeName);
 }
 
-void
+inline void
 LogProfiler()
 {
 
@@ -706,10 +672,6 @@ LogProfiler()
   for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
        ++IterTmpCallStack)
   {
-    //// DEBUG
-    // fprintf(DumpFile, "%s\n", (*IterTmpCallStack).szBunchCodeName );
-    //// DEBUG
-
     tmpString = strstr((*IterTmpCallStack).szBunchCodeName, _THREADID_NAME_SEPARATOR_);
     size = (long)(tmpString - (*IterTmpCallStack).szBunchCodeName);
     strncpy(szThreadId, (*IterTmpCallStack).szBunchCodeName + 1, size - 1);
@@ -765,11 +727,8 @@ LogProfiler()
         IterMapCalls = mapCalls.find(tmpString);
         if (IterMapCalls != mapCalls.end())
         {
-          double minTime = (*IterMapCalls).second.minTime;
-          double maxTime = (*IterMapCalls).second.maxTime;
-          // double totalTime    = (*IterMapCalls).second.totalTime;
-          // double averageTime    = (*IterMapCalls).second.averageTime;
-          // unsigned long nbCalls  = (*IterMapCalls).second.nbCalls;
+          auto minTime = (*IterMapCalls).second.minTime;
+          auto maxTime = (*IterMapCalls).second.maxTime;
 
           if ((*IterTmpCallStack).minTime < minTime)
           {
@@ -787,7 +746,7 @@ LogProfiler()
 
         else
         {
-          tdstGenProfilerData tgt; // = (*IterMap).second;
+          tdstGenProfilerData tgt; 
           if (strstr(tmpString, szThreadId))
           {
             strcpy(tgt.szBunchCodeName, tmpString);
@@ -909,7 +868,7 @@ TimerInit()
 }
 
 // platform specific get hires times...
-double
+inline double
 startHighResolutionTimer()
 {
   __int64 time;
@@ -931,19 +890,6 @@ startHighResolutionTimer()
     return ((double)(timeGetTime() - timer.mm_timer_start) * timer.resolution) * 1000.0f;
   }
 }
-/*
- unsigned long endHighResolutionTimer(unsigned long time[2])
- {
- unsigned long ticks=0;
- //__asm__ __volatile__(
- //   "rdtsc\n"
- //   "sub  0x4(%%ecx),  %%edx\n"
- //   "sbb  (%%ecx),  %%eax\n"
- //   : "=a" (ticks) : "c" (time)
- //   );
- return ticks;
- }
- */
 #elif IS_OS_MACOSX
 
 // Initialize Our Timer (Get It Ready)
