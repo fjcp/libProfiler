@@ -55,7 +55,15 @@
 //
 //
 
-#pragma once
+#ifndef LIBPROFILER_H__
+#define LIBPROFILER_H__
+
+#ifdef LIB_PROFILER_CONFIG_MAIN
+#define USE_PROFILER 1
+#define LIB_PROFILER_IMPLEMENTATION
+#define LIB_PROFILER_PRINTF myPrintf
+#endif
+
 #include <boost/scope_exit.hpp>
 //
 inline void
@@ -136,8 +144,6 @@ myPrintf(const char* szText)
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIBPROFILER_H__
-#define LIBPROFILER_H__
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // includes
@@ -920,5 +926,25 @@ startHighResolutionTimer()
 #endif // LIB_PROFILER_IMPLEMENTATION
 
 #endif // USE_PROFILER
+
+#ifdef LIB_PROFILER_CONFIG_MAIN
+
+class LibProfilerMain
+{
+  public:
+    LibProfilerMain()
+    {
+      PROFILER_ENABLE;
+    }
+    ~LibProfilerMain()
+    {
+      LogProfiler();
+      PROFILER_DISABLE;
+    }
+};
+
+LibProfilerMain __lib_profiler_main_instance;
+
+#endif
 
 #endif // LIBPROFILER_H__
