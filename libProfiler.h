@@ -64,7 +64,9 @@
 #define LIB_PROFILER_PRINTF myPrintf
 #endif
 
+#include <boost/algorithm/string.hpp>
 #include <boost/scope_exit.hpp>
+#include <regex>
 //
 inline void
 myPrintf(const char* szText)
@@ -144,7 +146,6 @@ myPrintf(const char* szText)
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // includes
 
@@ -156,7 +157,7 @@ myPrintf(const char* szText)
 #include <vector>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// PROFILE/LOG
+// PROFILE/lib_prof_log
 
 #ifndef ProfilerPrintf
 #define ProfilerPrintf printf
@@ -248,7 +249,7 @@ myPrintf(const char* szText)
 #define QUOTE(x) _QUOTE(x)
 
 inline void
-LOG(const char* format, ...)
+lib_prof_log(const char* format, ...)
 {
   va_list ptr_arg;
   va_start(ptr_arg, format);
@@ -401,7 +402,7 @@ startHighResolutionTimer(void);
 
 #if IS_OS_WINDOWS
 // Create A Structure For The Timer Information
-inline struct
+struct
 {
   __int64 frequency;                 // Timer Frequency
   float resolution;                  // Timer Resolution
@@ -430,13 +431,13 @@ typedef struct stGenProfilerData
 typedef std::vector<tdstGenProfilerData> tdCallStackType;
 
 //  Hold the sequence of profiler_starts
-inline std::map<std::string, tdstGenProfilerData> mapProfilerGraph;
+std::map<std::string, tdstGenProfilerData> mapProfilerGraph;
 
 // Hold profiler data vector in function of the thread
-inline map<unsigned long, tdCallStackType> mapCallsByThread;
+map<unsigned long, tdCallStackType> mapCallsByThread;
 
 // Critical section
-inline ZCriticalSection_t* gProfilerCriticalSection;
+ZCriticalSection_t* gProfilerCriticalSection;
 //
 // Activate the profiler
 //
@@ -556,7 +557,7 @@ Zprofiler_end()
   // Check if vector is empty
   if ((*IterCallsByThreadMap).second.empty())
   {
-    LOG("Il y a une erreur dans le vecteur CallStack !!!\n\n");
+    lib_prof_log("Il y a une erreur dans le vecteur CallStack !!!\n\n");
     return;
   }
 
@@ -686,11 +687,12 @@ LogProfiler()
   {
     sprintf(szThreadId, "%s", IterThreadIdsCount->first.c_str());
 
-    LOG("CALLSTACK of Thread %s\n", szThreadId);
-    LOG(
+    lib_prof_log("CALLSTACK of Thread %s\n", szThreadId);
+    lib_prof_log(
       "_______________________________________________________________________________________\n");
-    LOG("| Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section\n");
-    LOG(
+    lib_prof_log(
+      "| Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section\n");
+    lib_prof_log(
       "_______________________________________________________________________________________\n");
 
     long nbSeparator = 0;
@@ -722,8 +724,17 @@ LogProfiler()
 
         // Get the last start_profile_name in the string
         tmpString = strrchr((*IterTmpCallStack).szBunchCodeName, '|') + 1;
+        std::string thread_id_method = IterTmpCallStack->szBunchCodeName;
+        thread_id_method.erase(0, 1);
 
-        IterMapCalls = mapCalls.find(tmpString);
+        auto last_separator = thread_id_method.find_last_of("|");
+        if (last_separator != std::string::npos)
+        {
+          auto at_position = thread_id_method.find("@");
+          thread_id_method.replace(at_position + 1, last_separator - at_position, "");
+        }
+
+        IterMapCalls = mapCalls.find(thread_id_method);
         if (IterMapCalls != mapCalls.end())
         {
           const auto minTime = (*IterMapCalls).second.minTime;
@@ -746,9 +757,9 @@ LogProfiler()
         else
         {
           tdstGenProfilerData tgt;
-          if (strstr(tmpString, szThreadId))
+          if (boost::algorithm::starts_with(thread_id_method, szThreadId))
           {
-            strcpy(tgt.szBunchCodeName, tmpString);
+            strcpy(tgt.szBunchCodeName, thread_id_method.c_str());
           }
           else
           {
@@ -764,7 +775,7 @@ LogProfiler()
           tgt.lastTime = (*IterTmpCallStack).lastTime;
           tgt.nbCalls = (*IterTmpCallStack).nbCalls;
 
-          mapCalls.insert(std::make_pair(tmpString, tgt));
+          mapCalls.insert(std::make_pair(thread_id_method, tgt));
         }
 
         // Copy white space in the string to format the display
@@ -781,15 +792,16 @@ LogProfiler()
         // Display the name of the bunch code profiled
         if (IterTmpCallStack->totalTime > MAX_TOTAL_TIME / 100.)
         {
-          LOG("%s%s\n", textLine, tmpString);
+          lib_prof_log("%s%s\n", textLine, tmpString);
         }
       }
     }
-    LOG("_______________________________________________________________________________________"
-        "\n\n");
+    lib_prof_log(
+      "_______________________________________________________________________________________"
+      "\n\n");
     ++IterThreadIdsCount;
   }
-  LOG("\n\n");
+  lib_prof_log("\n\n");
 
   //
   //  DUMP CALLS
@@ -799,11 +811,12 @@ LogProfiler()
   {
     sprintf(szThreadId, "%s", IterThreadIdsCount->first.c_str());
 
-    LOG("DUMP of Thread %s\n", szThreadId);
-    LOG(
+    lib_prof_log("DUMP of Thread %s\n", szThreadId);
+    lib_prof_log(
       "_______________________________________________________________________________________\n");
-    LOG("| Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section\n");
-    LOG(
+    lib_prof_log(
+      "| Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section\n");
+    lib_prof_log(
       "_______________________________________________________________________________________\n");
 
     for (IterMapCalls = mapCalls.begin(); IterMapCalls != mapCalls.end(); ++IterMapCalls)
@@ -811,20 +824,21 @@ LogProfiler()
       tmpString = (*IterMapCalls).second.szBunchCodeName;
       if (strstr(tmpString, szThreadId))
       {
-        if ((*IterMapCalls).second.totalTime > MAX_TOTAL_TIME / 100.)
+        //        if ((*IterMapCalls).second.totalTime > MAX_TOTAL_TIME / 100.)
         {
-          LOG("| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
-              (*IterMapCalls).second.totalTime,
-              (*IterMapCalls).second.averageTime,
-              (*IterMapCalls).second.minTime,
-              (*IterMapCalls).second.maxTime,
-              static_cast<int>((*IterMapCalls).second.nbCalls),
-              (*IterMapCalls).second.szBunchCodeName + strlen(szThreadId) + 1);
+          lib_prof_log("| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
+                       (*IterMapCalls).second.totalTime,
+                       (*IterMapCalls).second.averageTime,
+                       (*IterMapCalls).second.minTime,
+                       (*IterMapCalls).second.maxTime,
+                       static_cast<int>((*IterMapCalls).second.nbCalls),
+                       (*IterMapCalls).second.szBunchCodeName + strlen(szThreadId) + 1);
         }
       }
     }
-    LOG("_______________________________________________________________________________________"
-        "\n\n");
+    lib_prof_log(
+      "_______________________________________________________________________________________"
+      "\n\n");
     ++IterThreadIdsCount;
   }
 }
@@ -931,16 +945,13 @@ startHighResolutionTimer()
 
 class LibProfilerMain
 {
-  public:
-    LibProfilerMain()
-    {
-      PROFILER_ENABLE;
-    }
-    ~LibProfilerMain()
-    {
-      LogProfiler();
-      PROFILER_DISABLE;
-    }
+public:
+  LibProfilerMain() { PROFILER_ENABLE; }
+  ~LibProfilerMain()
+  {
+    LogProfiler();
+    PROFILER_DISABLE;
+  }
 };
 
 LibProfilerMain __lib_profiler_main_instance;

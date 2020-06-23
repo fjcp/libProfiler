@@ -36,7 +36,7 @@ def add_cpp_macros_in_methods(file_lines, initial_macro):
         ) and re.search(r"[a-zA-Z_][a-zA-Z0-9_]*::[a-zA-Z_][a-zA-Z0-9_]*\(.*", line):
             method_definition = True
 
-        if method_definition and line.rstrip(" \n").endswith("{"):
+        if method_definition and line.rstrip(" \n").endswith("{") and not line.startswith("//"):
             file_lines_out.append(initial_macro + "();\n")
             method_definition = False
 
@@ -229,6 +229,20 @@ A::B(int foo):
 { 
 MACRO_INITIAL();
 }
+"""
+    assert process_code(cpp_code_in) == cpp_code_out
+
+def test_method_with_comments():
+    cpp_code_in = """\
+A::B(int foo)
+//{ 
+//}"""
+
+    cpp_code_out = """\
+#include "MyInclude.h"
+A::B(int foo)
+//{ 
+//}
 """
     assert process_code(cpp_code_in) == cpp_code_out
 

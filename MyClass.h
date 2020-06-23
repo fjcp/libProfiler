@@ -7,6 +7,7 @@ class MyClass
 public:
   static void myFunction1();
   static void myFunction2();
+  static void myFunction3();
 };
 #endif
 
