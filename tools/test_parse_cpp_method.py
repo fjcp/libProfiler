@@ -3,6 +3,7 @@ import string
 import sys
 import glob
 import os
+import shutil
 
 
 def string_to_string_list(string):
@@ -249,8 +250,12 @@ A::B(int foo)
 
 if __name__ == "__main__":
     rootDir = "."
+    include_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    shutil.copy2(os.path.join(include_path,"libProfiler.h"), os.getcwd())
+
     for dirName, subdirList, fileList in os.walk(rootDir):
         print("Found directory: %s" % dirName)
+        shutil.copy2(os.path.join(include_path,"libProfiler.h"), dirName)
         for file in fileList:
             #        for file in ['SortWireDataOp.cpp']:
             if file.endswith(".cpp"):

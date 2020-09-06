@@ -14,6 +14,9 @@
 #include <execution>
 #include <iostream>
 
+MyClass _my_class;
+
+
 int
 main(int argc, const char* argv[])
 {

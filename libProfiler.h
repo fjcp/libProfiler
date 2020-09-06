@@ -488,6 +488,9 @@ GetCurrentThreadId()
 inline void
 Zprofiler_start(const char* profile_name)
 {
+  if (gProfilerCriticalSection == nullptr)
+    return;
+
   LockCriticalSection(gProfilerCriticalSection);
 
   unsigned long ulThreadId = GetCurrentThreadId();
@@ -549,6 +552,9 @@ Zprofiler_start(const char* profile_name)
 inline void
 Zprofiler_end()
 {
+  if (gProfilerCriticalSection == nullptr)
+    return;
+
   const unsigned long ulThreadId = GetCurrentThreadId();
 
   // Retrieve the right entry in function of the threadId
@@ -824,7 +830,7 @@ LogProfiler()
       tmpString = (*IterMapCalls).second.szBunchCodeName;
       if (strstr(tmpString, szThreadId))
       {
-        //        if ((*IterMapCalls).second.totalTime > MAX_TOTAL_TIME / 100.)
+        if ((*IterMapCalls).second.totalTime > MAX_TOTAL_TIME / 100.)
         {
           lib_prof_log("| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
                        (*IterMapCalls).second.totalTime,
@@ -903,19 +909,6 @@ startHighResolutionTimer()
 
   return ms;
 }
-/*
- unsigned long endHighResolutionTimer(unsigned long time[2])
- {
- UnsignedWide t;
- Microseconds(&t);
- return t.lo - time[0];
- // given that we're returning a 32 bit integer, and this is unsigned subtraction...
- // it will just wrap around, we don't need the upper word of the time.
- // NOTE: the code assumes that more than 3 hrs will not go by between calls to
- startHighResolutionTimer() and endHighResolutionTimer().
- // I mean... that damn well better not happen anyway.
- }
- */
 #else
 
 // Initialize Our Timer (Get It Ready)
