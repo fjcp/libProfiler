@@ -33,7 +33,7 @@ def add_cpp_macros_in_methods(file_lines, initial_macro):
         file_lines_out.append(line)
 
         if not (
-            line.startswith(" ") or line.startswith("\t") or line.startswith("//")
+            line.startswith(" ") or line.startswith("\t") or line.startswith("//") or line.endswith(";\n")
         ) and re.search(r"[a-zA-Z_][a-zA-Z0-9_]*::[a-zA-Z_][a-zA-Z0-9_]*\(.*", line):
             method_definition = True
 
@@ -247,6 +247,24 @@ A::B(int foo)
 """
     assert process_code(cpp_code_in) == cpp_code_out
 
+def test_namespace():
+    cpp_code_in = """\
+static const int = J::K();
+namespace {
+A::B(int foo)
+{
+}"""
+
+    cpp_code_out = """\
+#include "MyInclude.h"
+static const int = J::K();
+namespace {
+A::B(int foo)
+{
+MACRO_INITIAL();
+}
+"""
+    assert process_code(cpp_code_in) == cpp_code_out
 
 if __name__ == "__main__":
     rootDir = "."

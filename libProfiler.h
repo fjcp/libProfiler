@@ -441,7 +441,7 @@ ZCriticalSection_t* gProfilerCriticalSection;
 //
 // Activate the profiler
 //
-inline bool
+bool
 Zprofiler_enable()
 {
   // Initialize the timer
@@ -455,7 +455,7 @@ Zprofiler_enable()
 //
 // Deactivate the profiler
 //
-inline void
+void
 Zprofiler_disable()
 {
   // Dump to file
@@ -485,7 +485,7 @@ GetCurrentThreadId()
 //
 // Start the profiling of a bunch of code
 //
-inline void
+void
 Zprofiler_start(const char* profile_name)
 {
   if (gProfilerCriticalSection == nullptr)
@@ -549,7 +549,7 @@ Zprofiler_start(const char* profile_name)
 //
 // Stop the profiling of a bunch of code
 //
-inline void
+void
 Zprofiler_end()
 {
   if (gProfilerCriticalSection == nullptr)
