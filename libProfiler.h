@@ -64,8 +64,8 @@
 #define LIB_PROFILER_PRINTF myPrintf
 #endif
 
-#include <boost/algorithm/string.hpp>
-#include <boost/scope_exit.hpp>
+//#include <boost/algorithm/string.hpp>
+//#include <boost/scope_exit.hpp>
 #include <regex>
 //
 inline void
@@ -366,6 +366,17 @@ Zprofiler_end();
 void
 LogProfiler();
 
+
+class OnLeaveScope
+{
+public:
+  OnLeaveScope() {}
+  ~OnLeaveScope()
+  {
+    Zprofiler_end();
+  }
+};
+
 // defines
 
 #define PROFILER_ENABLE Zprofiler_enable()
@@ -376,8 +387,7 @@ LogProfiler();
 
 #define PROFILER_F()                                                                               \
   Zprofiler_start(__FUNCTION__);                                                                   \
-  BOOST_SCOPE_EXIT(void) { Zprofiler_end(); }                                                      \
-  BOOST_SCOPE_EXIT_END
+  OnLeaveScope __on_leave_scope_call_zprofiler_end;
 
 #else
 
@@ -763,7 +773,9 @@ LogProfiler()
         else
         {
           tdstGenProfilerData tgt;
-          if (boost::algorithm::starts_with(thread_id_method, szThreadId))
+          std::string thread_id(szThreadId);
+          if (thread_id_method.substr(0,thread_id.size()) == thread_id)
+          //if (boost::algorithm::starts_with(thread_id_method, szThreadId))
           {
             strcpy(tgt.szBunchCodeName, thread_id_method.c_str());
           }
