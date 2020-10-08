@@ -360,7 +360,7 @@ Zprofiler_enable();
 void
 Zprofiler_disable();
 void
-Zprofiler_start(const char* profile_name);
+Zprofiler_start(const std::string& profile_name);
 void
 Zprofiler_end();
 void
@@ -434,7 +434,8 @@ typedef struct stGenProfilerData
   double lastTime;            // Time of the previous passage
   double elapsedTime;         // Elapsed Time
   unsigned long nbCalls;      // Numbers of calls
-  char szBunchCodeName[2048]; // temporary.
+  //char szBunchCodeName[2048]; // temporary.
+  std::string szBunchCodeName; // temporary.
 } tdstGenProfilerData;
 
 //  Hold the call stack
@@ -496,7 +497,7 @@ GetCurrentThreadId()
 // Start the profiling of a bunch of code
 //
 void
-Zprofiler_start(const char* profile_name)
+Zprofiler_start(const std::string& profile_name)
 {
   if (gProfilerCriticalSection == nullptr)
     return;
@@ -525,12 +526,14 @@ Zprofiler_start(const char* profile_name)
   if ((*IterCallsByThreadMap).second.empty())
   {
     GenProfilerData.nbCalls = 1;
-    sprintf(GenProfilerData.szBunchCodeName,
+    GenProfilerData.szBunchCodeName = std::to_string(ulThreadId) + _THREADID_NAME_SEPARATOR_ + profile_name;
+/*    sprintf(GenProfilerData.szBunchCodeName,
             "%s%d%s%s",
             _NAME_SEPARATOR_,
             (int)ulThreadId,
             _THREADID_NAME_SEPARATOR_,
-            profile_name);
+            profile_name.c_str()); 
+            */
     (*IterCallsByThreadMap).second.push_back(GenProfilerData);
   }
   // It's not the first element of the vector
@@ -541,13 +544,11 @@ Zprofiler_start(const char* profile_name)
 
     // We need to construct the string with the previous value of the
     // profile_start
-    char* previousString =
+    std::string previousString =
       (*IterCallsByThreadMap).second[(*IterCallsByThreadMap).second.size() - 1].szBunchCodeName;
 
     // Add the current profile start string
-    strcpy(GenProfilerData.szBunchCodeName, previousString);
-    strcat(GenProfilerData.szBunchCodeName, _NAME_SEPARATOR_);
-    strcat(GenProfilerData.szBunchCodeName, profile_name);
+    GenProfilerData.szBunchCodeName =  previousString + _NAME_SEPARATOR_ + profile_name;
 
     // Push it
     (*IterCallsByThreadMap).second.push_back(GenProfilerData);
@@ -642,9 +643,9 @@ LogProfiler()
 {
 
   // Thread Id String
-  char szThreadId[16];
+  std::string szThreadId;
   char textLine[2048];
-  char* tmpString;
+  std::string tmpString;
 
   long i;
   // long nbTreadIds  = 0;
@@ -668,7 +669,7 @@ LogProfiler()
   std::map<std::string, tdstGenProfilerData>::iterator IterMap;
   for (IterMap = mapProfilerGraph.begin(); IterMap != mapProfilerGraph.end(); ++IterMap)
   {
-    strcpy((*IterMap).second.szBunchCodeName, (*IterMap).first.c_str());
+    (*IterMap).second.szBunchCodeName =  (*IterMap).first;
     tmpCallStack.push_back((*IterMap).second);
   }
 
@@ -688,10 +689,8 @@ LogProfiler()
   for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
        ++IterTmpCallStack)
   {
-    tmpString = strstr((*IterTmpCallStack).szBunchCodeName, _THREADID_NAME_SEPARATOR_);
-    size = (long)(tmpString - (*IterTmpCallStack).szBunchCodeName);
-    strncpy(szThreadId, (*IterTmpCallStack).szBunchCodeName + 1, size - 1);
-    szThreadId[size - 1] = 0;
+    auto threadid_name_pos = IterTmpCallStack->szBunchCodeName.find_first_of(_THREADID_NAME_SEPARATOR_);
+    szThreadId = IterTmpCallStack->szBunchCodeName.substr(0, threadid_name_pos);
     ThreadIdsCount[szThreadId]++;
   }
 
@@ -701,9 +700,9 @@ LogProfiler()
   auto IterThreadIdsCount = ThreadIdsCount.begin();
   for (unsigned long nbThread = 0; nbThread < ThreadIdsCount.size(); nbThread++)
   {
-    sprintf(szThreadId, "%s", IterThreadIdsCount->first.c_str());
+    szThreadId =  IterThreadIdsCount->first;
 
-    lib_prof_log("CALLSTACK of Thread %s\n", szThreadId);
+    lib_prof_log("CALLSTACK of Thread %s\n", szThreadId.c_str());
     lib_prof_log(
       "_______________________________________________________________________________________\n");
     lib_prof_log(
@@ -711,23 +710,16 @@ LogProfiler()
     lib_prof_log(
       "_______________________________________________________________________________________\n");
 
-    long nbSeparator = 0;
     for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
          ++IterTmpCallStack)
     {
-      tmpString = (*IterTmpCallStack).szBunchCodeName + 1;
-
-      if (strstr(tmpString, szThreadId))
+      auto code_name_with_thread = IterTmpCallStack->szBunchCodeName;
+      if( code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
       {
+        auto at_position = code_name_with_thread.find("@");
+        auto code_name = code_name_with_thread.substr(at_position + 1);
         // Count the number of separator in the string
-        nbSeparator = 0;
-        while (*tmpString)
-        {
-          if (*tmpString++ == '|')
-          {
-            nbSeparator++;
-          }
-        }
+        auto nbSeparator = std::count(code_name.begin(), code_name.end(), '|');
 
         // Get times and fill in the display string
         sprintf(textLine,
@@ -739,18 +731,14 @@ LogProfiler()
                 static_cast<int>((*IterTmpCallStack).nbCalls));
 
         // Get the last start_profile_name in the string
-        tmpString = strrchr((*IterTmpCallStack).szBunchCodeName, '|') + 1;
-        std::string thread_id_method = IterTmpCallStack->szBunchCodeName;
-        thread_id_method.erase(0, 1);
 
-        auto last_separator = thread_id_method.find_last_of("|");
+        auto last_separator = code_name.find_last_of("|");
         if (last_separator != std::string::npos)
         {
-          auto at_position = thread_id_method.find("@");
-          thread_id_method.replace(at_position + 1, last_separator - at_position, "");
+          code_name.replace(0, last_separator+1, "");
         }
 
-        IterMapCalls = mapCalls.find(thread_id_method);
+        IterMapCalls = mapCalls.find(szThreadId+_THREADID_NAME_SEPARATOR_+ code_name);
         if (IterMapCalls != mapCalls.end())
         {
           const auto minTime = (*IterMapCalls).second.minTime;
@@ -769,22 +757,10 @@ LogProfiler()
           (*IterMapCalls).second.averageTime =
             (*IterMapCalls).second.totalTime / (*IterMapCalls).second.nbCalls;
         }
-
         else
         {
           tdstGenProfilerData tgt;
-          std::string thread_id(szThreadId);
-          if (thread_id_method.substr(0,thread_id.size()) == thread_id)
-          //if (boost::algorithm::starts_with(thread_id_method, szThreadId))
-          {
-            strcpy(tgt.szBunchCodeName, thread_id_method.c_str());
-          }
-          else
-          {
-            sprintf(
-              tgt.szBunchCodeName, "%s%s%s", szThreadId, _THREADID_NAME_SEPARATOR_, tmpString);
-          }
-
+          tgt.szBunchCodeName = code_name;
           tgt.minTime = (*IterTmpCallStack).minTime;
           tgt.maxTime = (*IterTmpCallStack).maxTime;
           tgt.totalTime = (*IterTmpCallStack).totalTime;
@@ -793,7 +769,7 @@ LogProfiler()
           tgt.lastTime = (*IterTmpCallStack).lastTime;
           tgt.nbCalls = (*IterTmpCallStack).nbCalls;
 
-          mapCalls.insert(std::make_pair(thread_id_method, tgt));
+          mapCalls.insert(std::make_pair(szThreadId + _THREADID_NAME_SEPARATOR_ + code_name, tgt));
         }
 
         // Copy white space in the string to format the display
@@ -801,16 +777,10 @@ LogProfiler()
         for (i = 0; i < nbSeparator; i++)
           strcat(textLine, "+");
 
-        // Remove the thread if from the string
-        if (strstr(tmpString, _THREADID_NAME_SEPARATOR_))
-        {
-          tmpString += strlen(szThreadId) + 1;
-        }
-
         // Display the name of the bunch code profiled
         if (IterTmpCallStack->totalTime > MAX_TOTAL_TIME / 100.)
         {
-          lib_prof_log("%s%s\n", textLine, tmpString);
+          lib_prof_log("%s%s\n", textLine, code_name.c_str());
         }
       }
     }
@@ -827,9 +797,9 @@ LogProfiler()
   IterThreadIdsCount = ThreadIdsCount.begin();
   for (unsigned long nbThread = 0; nbThread < ThreadIdsCount.size(); nbThread++)
   {
-    sprintf(szThreadId, "%s", IterThreadIdsCount->first.c_str());
+    szThreadId =  IterThreadIdsCount->first;
 
-    lib_prof_log("DUMP of Thread %s\n", szThreadId);
+    lib_prof_log("DUMP of Thread %s\n", szThreadId.c_str());
     lib_prof_log(
       "_______________________________________________________________________________________\n");
     lib_prof_log(
@@ -839,18 +809,18 @@ LogProfiler()
 
     for (IterMapCalls = mapCalls.begin(); IterMapCalls != mapCalls.end(); ++IterMapCalls)
     {
-      tmpString = (*IterMapCalls).second.szBunchCodeName;
-      if (strstr(tmpString, szThreadId))
-      {
+      auto code_name_with_thread = (*IterMapCalls).first;
+      if( code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
+      { 
         if ((*IterMapCalls).second.totalTime > MAX_TOTAL_TIME / 100.)
         {
           lib_prof_log("| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
-                       (*IterMapCalls).second.totalTime,
-                       (*IterMapCalls).second.averageTime,
-                       (*IterMapCalls).second.minTime,
-                       (*IterMapCalls).second.maxTime,
-                       static_cast<int>((*IterMapCalls).second.nbCalls),
-                       (*IterMapCalls).second.szBunchCodeName + strlen(szThreadId) + 1);
+                        (*IterMapCalls).second.totalTime,
+                        (*IterMapCalls).second.averageTime,
+                        (*IterMapCalls).second.minTime,
+                        (*IterMapCalls).second.maxTime,
+                        static_cast<int>((*IterMapCalls).second.nbCalls),
+                        (*IterMapCalls).second.szBunchCodeName.c_str());
         }
       }
     }
