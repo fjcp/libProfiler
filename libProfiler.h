@@ -254,7 +254,7 @@ lib_prof_log(const char* format, ...)
   va_list ptr_arg;
   va_start(ptr_arg, format);
 
-  static char tmps[1024];
+  static char tmps[2048];
   vsprintf(tmps, format, ptr_arg);
 
   LIB_PROFILER_PRINTF(tmps);
@@ -434,7 +434,7 @@ typedef struct stGenProfilerData
   double lastTime;            // Time of the previous passage
   double elapsedTime;         // Elapsed Time
   unsigned long nbCalls;      // Numbers of calls
-  char szBunchCodeName[1024]; // temporary.
+  char szBunchCodeName[2048]; // temporary.
 } tdstGenProfilerData;
 
 //  Hold the call stack
@@ -643,7 +643,7 @@ LogProfiler()
 
   // Thread Id String
   char szThreadId[16];
-  char textLine[1024];
+  char textLine[2048];
   char* tmpString;
 
   long i;
