@@ -648,8 +648,6 @@ LogProfiler()
   std::string tmpString;
 
   long i;
-  // long nbTreadIds  = 0;
-  long size = 0;
 
   // Map for calls
   std::map<std::string, tdstGenProfilerData> mapCalls;
