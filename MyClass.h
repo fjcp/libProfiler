@@ -5,7 +5,7 @@
 class MyClass
 {
 public:
-  MyClass::MyClass();
+  MyClass();
   static void myFunction1();
   static void myFunction2();
   static void myFunction3();

@@ -242,8 +242,8 @@ myPrintf(const char* szText)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define _NAME_SEPARATOR_ "|"
-#define _THREADID_NAME_SEPARATOR_ "@"
+const std::string  _NAME_SEPARATOR_ = "|";
+const std::string _THREADID_NAME_SEPARATOR_ = "@";
 
 #define _QUOTE(x) #x
 #define QUOTE(x) _QUOTE(x)
@@ -278,11 +278,6 @@ typedef CRITICAL_SECTION ZCriticalSection_t;
 #elif IS_OS_LINUX
 #include <pthread.h>
 typedef pthread_mutex_t ZCriticalSection_t;
-inline char*
-ZGetCurrentDirectory(int bufLength, char* pszDest)
-{
-  return getcwd(pszDest, bufLength);
-}
 
 #elif IS_OS_MACOSX
 #import <CoreServices/CoreServices.h>
@@ -433,7 +428,7 @@ typedef struct stGenProfilerData
   double maxTime;
   double lastTime;            // Time of the previous passage
   double elapsedTime;         // Elapsed Time
-  unsigned long nbCalls;      // Numbers of calls
+  unsigned long nbCalls=0;      // Numbers of calls
   //char szBunchCodeName[2048]; // temporary.
   std::string szBunchCodeName; // temporary.
 } tdstGenProfilerData;
@@ -508,7 +503,7 @@ Zprofiler_start(const std::string& profile_name)
 
   // Add the profile name in the callstack vector
   tdstGenProfilerData GenProfilerData;
-  memset(&GenProfilerData, 0, sizeof(GenProfilerData));
+//  memset(&GenProfilerData, 0, sizeof(GenProfilerData));
   GenProfilerData.lastTime = startHighResolutionTimer();
   GenProfilerData.minTime = 0xFFFFFFFF;
 
