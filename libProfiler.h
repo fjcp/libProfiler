@@ -429,7 +429,6 @@ typedef struct stGenProfilerData
   double lastTime;            // Time of the previous passage
   double elapsedTime;         // Elapsed Time
   unsigned long nbCalls=0;      // Numbers of calls
-  //char szBunchCodeName[2048]; // temporary.
   std::string szBunchCodeName; // temporary.
 } tdstGenProfilerData;
 
@@ -484,7 +483,7 @@ GetCurrentThreadId()
 unsigned long
 GetCurrentThreadId()
 {
-  return 0;
+  return pthread_self();
 }
 #endif
 
