@@ -422,12 +422,12 @@ struct
 
 typedef struct stGenProfilerData
 {
-  double totalTime;
-  double averageTime;
-  double minTime;
-  double maxTime;
-  double lastTime;            // Time of the previous passage
-  double elapsedTime;         // Elapsed Time
+  double totalTime = 0.0;
+  double averageTime = 0.0;
+  double minTime = 0.0;
+  double maxTime = 0.0;
+  double lastTime = 0.0;            // Time of the previous passage
+  double elapsedTime = 0.0;         // Elapsed Time
   unsigned long nbCalls=0;      // Numbers of calls
   std::string szBunchCodeName; // temporary.
 } tdstGenProfilerData;
