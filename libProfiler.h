@@ -429,7 +429,7 @@ typedef struct stGenProfilerData
   double lastTime = 0.0;            // Time of the previous passage
   double elapsedTime = 0.0;         // Elapsed Time
   unsigned long nbCalls=0;      // Numbers of calls
-  std::string szBunchCodeName; // temporary.
+  std::string callStack; // temporary.
 } tdstGenProfilerData;
 
 //  Hold the call stack
@@ -517,10 +517,10 @@ Zprofiler_start(const std::string& profile_name)
   }
 
   // It's the first element of the vector
-  if ((*IterCallsByThreadMap).second.empty())
+  if (IterCallsByThreadMap->second.empty())
   {
     GenProfilerData.nbCalls = 1;
-    GenProfilerData.szBunchCodeName = std::to_string(ulThreadId) + _THREADID_NAME_SEPARATOR_ + profile_name;
+    GenProfilerData.callStack = std::to_string(ulThreadId) + _THREADID_NAME_SEPARATOR_ + profile_name;
 /*    sprintf(GenProfilerData.szBunchCodeName,
             "%s%d%s%s",
             _NAME_SEPARATOR_,
@@ -528,7 +528,7 @@ Zprofiler_start(const std::string& profile_name)
             _THREADID_NAME_SEPARATOR_,
             profile_name.c_str()); 
             */
-    (*IterCallsByThreadMap).second.push_back(GenProfilerData);
+    IterCallsByThreadMap->second.push_back(GenProfilerData);
   }
   // It's not the first element of the vector
   else
@@ -539,13 +539,13 @@ Zprofiler_start(const std::string& profile_name)
     // We need to construct the string with the previous value of the
     // profile_start
     std::string previousString =
-      (*IterCallsByThreadMap).second[(*IterCallsByThreadMap).second.size() - 1].szBunchCodeName;
+      IterCallsByThreadMap->second[IterCallsByThreadMap->second.size() - 1].callStack;
 
     // Add the current profile start string
-    GenProfilerData.szBunchCodeName =  previousString + _NAME_SEPARATOR_ + profile_name;
+    GenProfilerData.callStack =  previousString + _NAME_SEPARATOR_ + profile_name;
 
     // Push it
-    (*IterCallsByThreadMap).second.push_back(GenProfilerData);
+    IterCallsByThreadMap->second.push_back(GenProfilerData);
   }
 
   UnLockCriticalSection(gProfilerCriticalSection);
@@ -566,7 +566,7 @@ Zprofiler_end()
   const auto IterCallsByThreadMap = mapCallsByThread.find(ulThreadId);
 
   // Check if vector is empty
-  if ((*IterCallsByThreadMap).second.empty())
+  if (IterCallsByThreadMap->second.empty())
   {
     lib_prof_log("Il y a une erreur dans le vecteur CallStack !!!\n\n");
     return;
@@ -574,35 +574,35 @@ Zprofiler_end()
 
   LockCriticalSection(gProfilerCriticalSection);
 
-  auto GenProfilerData = (*IterCallsByThreadMap).second[(*IterCallsByThreadMap).second.size() - 1];
+  auto GenProfilerData = IterCallsByThreadMap->second[IterCallsByThreadMap->second.size() - 1];
 
   // Compute elapsed time
   GenProfilerData.elapsedTime += startHighResolutionTimer() - GenProfilerData.lastTime;
   GenProfilerData.totalTime += GenProfilerData.elapsedTime;
 
-  const auto IterMap = mapProfilerGraph.find(GenProfilerData.szBunchCodeName);
+  const auto IterMap = mapProfilerGraph.find(GenProfilerData.callStack);
   if (IterMap != mapProfilerGraph.end())
   {
-    (*IterMap).second.nbCalls++;
+    IterMap->second.nbCalls++;
 
     // Retrieve time information to compute min and max time
-    const auto minTime = (*IterMap).second.minTime;
-    const auto maxTime = (*IterMap).second.maxTime;
+    const auto minTime = IterMap->second.minTime;
+    const auto maxTime = IterMap->second.maxTime;
 
     if (GenProfilerData.elapsedTime < minTime)
     {
-      (*IterMap).second.minTime = GenProfilerData.elapsedTime;
+      IterMap->second.minTime = GenProfilerData.elapsedTime;
     }
 
     if (GenProfilerData.elapsedTime > maxTime)
     {
-      (*IterMap).second.maxTime = GenProfilerData.elapsedTime;
+      IterMap->second.maxTime = GenProfilerData.elapsedTime;
     }
 
     // Compute Total Time
-    (*IterMap).second.totalTime += GenProfilerData.elapsedTime;
+    IterMap->second.totalTime += GenProfilerData.elapsedTime;
     // Compute Average Time
-    (*IterMap).second.averageTime = (*IterMap).second.totalTime / (*IterMap).second.nbCalls;
+    IterMap->second.averageTime = IterMap->second.totalTime / IterMap->second.nbCalls;
   }
   else
   {
@@ -613,11 +613,11 @@ Zprofiler_end()
     GenProfilerData.averageTime = GenProfilerData.totalTime / GenProfilerData.nbCalls;
 
     // Insert this part of the call stack into the Progiler Graph
-    mapProfilerGraph.insert(std::make_pair(GenProfilerData.szBunchCodeName, GenProfilerData));
+    mapProfilerGraph.insert(std::make_pair(GenProfilerData.callStack, GenProfilerData));
   }
 
   // Now, pop back the GenProfilerData from the vector callstack
-  (*IterCallsByThreadMap).second.pop_back();
+  IterCallsByThreadMap->second.pop_back();
 
   UnLockCriticalSection(gProfilerCriticalSection);
 }
@@ -629,7 +629,7 @@ Zprofiler_end()
 inline bool
 MyDataSortPredicate(const tdstGenProfilerData un, const tdstGenProfilerData deux)
 {
-  return std::string(un.szBunchCodeName) < std::string(deux.szBunchCodeName);
+  return std::string(un.callStack) < std::string(deux.callStack);
 }
 
 inline void
@@ -661,8 +661,8 @@ LogProfiler()
   std::map<std::string, tdstGenProfilerData>::iterator IterMap;
   for (IterMap = mapProfilerGraph.begin(); IterMap != mapProfilerGraph.end(); ++IterMap)
   {
-    (*IterMap).second.szBunchCodeName =  (*IterMap).first;
-    tmpCallStack.push_back((*IterMap).second);
+    IterMap->second.callStack =  IterMap->first;
+    tmpCallStack.push_back(IterMap->second);
   }
 
   // Sort the vector
@@ -681,8 +681,8 @@ LogProfiler()
   for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
        ++IterTmpCallStack)
   {
-    auto threadid_name_pos = IterTmpCallStack->szBunchCodeName.find_first_of(_THREADID_NAME_SEPARATOR_);
-    szThreadId = IterTmpCallStack->szBunchCodeName.substr(0, threadid_name_pos);
+    auto threadid_name_pos = IterTmpCallStack->callStack.find_first_of(_THREADID_NAME_SEPARATOR_);
+    szThreadId = IterTmpCallStack->callStack.substr(0, threadid_name_pos);
     ThreadIdsCount[szThreadId]++;
   }
 
@@ -705,7 +705,7 @@ LogProfiler()
     for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
          ++IterTmpCallStack)
     {
-      auto code_name_with_thread = IterTmpCallStack->szBunchCodeName;
+      auto code_name_with_thread = IterTmpCallStack->callStack;
       if( code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
       {
         auto at_position = code_name_with_thread.find("@");
@@ -716,11 +716,11 @@ LogProfiler()
         // Get times and fill in the display string
         sprintf(textLine,
                 "| %12.4f | %12.4f | %12.4f | %12.4f |%6d  | ",
-                (*IterTmpCallStack).totalTime,
-                (*IterTmpCallStack).averageTime,
-                (*IterTmpCallStack).minTime,
-                (*IterTmpCallStack).maxTime,
-                static_cast<int>((*IterTmpCallStack).nbCalls));
+                IterTmpCallStack->totalTime,
+                IterTmpCallStack->averageTime,
+                IterTmpCallStack->minTime,
+                IterTmpCallStack->maxTime,
+                static_cast<int>(IterTmpCallStack->nbCalls));
 
         // Get the last start_profile_name in the string
 
@@ -733,33 +733,33 @@ LogProfiler()
         IterMapCalls = mapCalls.find(szThreadId+_THREADID_NAME_SEPARATOR_+ code_name);
         if (IterMapCalls != mapCalls.end())
         {
-          const auto minTime = (*IterMapCalls).second.minTime;
-          const auto maxTime = (*IterMapCalls).second.maxTime;
+          const auto minTime = IterMapCalls->second.minTime;
+          const auto maxTime = IterMapCalls->second.maxTime;
 
-          if ((*IterTmpCallStack).minTime < minTime)
+          if (IterTmpCallStack->minTime < minTime)
           {
-            (*IterMapCalls).second.minTime = (*IterTmpCallStack).minTime;
+            IterMapCalls->second.minTime = IterTmpCallStack->minTime;
           }
-          if ((*IterTmpCallStack).maxTime > maxTime)
+          if (IterTmpCallStack->maxTime > maxTime)
           {
-            (*IterMapCalls).second.maxTime = (*IterTmpCallStack).maxTime;
+            IterMapCalls->second.maxTime = IterTmpCallStack->maxTime;
           }
-          (*IterMapCalls).second.totalTime += (*IterTmpCallStack).totalTime;
-          (*IterMapCalls).second.nbCalls += (*IterTmpCallStack).nbCalls;
-          (*IterMapCalls).second.averageTime =
-            (*IterMapCalls).second.totalTime / (*IterMapCalls).second.nbCalls;
+          IterMapCalls->second.totalTime += IterTmpCallStack->totalTime;
+          IterMapCalls->second.nbCalls += IterTmpCallStack->nbCalls;
+          IterMapCalls->second.averageTime =
+            IterMapCalls->second.totalTime / IterMapCalls->second.nbCalls;
         }
         else
         {
           tdstGenProfilerData tgt;
-          tgt.szBunchCodeName = code_name;
-          tgt.minTime = (*IterTmpCallStack).minTime;
-          tgt.maxTime = (*IterTmpCallStack).maxTime;
-          tgt.totalTime = (*IterTmpCallStack).totalTime;
-          tgt.averageTime = (*IterTmpCallStack).averageTime;
-          tgt.elapsedTime = (*IterTmpCallStack).elapsedTime;
-          tgt.lastTime = (*IterTmpCallStack).lastTime;
-          tgt.nbCalls = (*IterTmpCallStack).nbCalls;
+          tgt.callStack = code_name;
+          tgt.minTime = IterTmpCallStack->minTime;
+          tgt.maxTime = IterTmpCallStack->maxTime;
+          tgt.totalTime = IterTmpCallStack->totalTime;
+          tgt.averageTime = IterTmpCallStack->averageTime;
+          tgt.elapsedTime = IterTmpCallStack->elapsedTime;
+          tgt.lastTime = IterTmpCallStack->lastTime;
+          tgt.nbCalls = IterTmpCallStack->nbCalls;
 
           mapCalls.insert(std::make_pair(szThreadId + _THREADID_NAME_SEPARATOR_ + code_name, tgt));
         }
@@ -801,18 +801,18 @@ LogProfiler()
 
     for (IterMapCalls = mapCalls.begin(); IterMapCalls != mapCalls.end(); ++IterMapCalls)
     {
-      auto code_name_with_thread = (*IterMapCalls).first;
+      auto code_name_with_thread = IterMapCalls->first;
       if( code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
       { 
-        if ((*IterMapCalls).second.totalTime > MAX_TOTAL_TIME / 100.)
+        if (IterMapCalls->second.totalTime > MAX_TOTAL_TIME / 100.)
         {
           lib_prof_log("| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
-                        (*IterMapCalls).second.totalTime,
-                        (*IterMapCalls).second.averageTime,
-                        (*IterMapCalls).second.minTime,
-                        (*IterMapCalls).second.maxTime,
-                        static_cast<int>((*IterMapCalls).second.nbCalls),
-                        (*IterMapCalls).second.szBunchCodeName.c_str());
+                        IterMapCalls->second.totalTime,
+                        IterMapCalls->second.averageTime,
+                        IterMapCalls->second.minTime,
+                        IterMapCalls->second.maxTime,
+                        static_cast<int>(IterMapCalls->second.nbCalls),
+                        IterMapCalls->second.callStack.c_str());
         }
       }
     }
