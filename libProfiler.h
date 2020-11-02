@@ -380,9 +380,19 @@ public:
 #define PROFILER_START_F() Zprofiler_start(__FUNCTION__)
 #define PROFILER_END() Zprofiler_end()
 
+#if IS_OS_LINUX
+#define PROFILER_F()                                                                               \
+  Zprofiler_start(__PRETTY_FUNCTION__);                                                            \
+  OnLeaveScope __on_leave_scope_call_zprofiler_end;
+#elif IS_OS_MACOSX
 #define PROFILER_F()                                                                               \
   Zprofiler_start(__FUNCTION__);                                                                   \
   OnLeaveScope __on_leave_scope_call_zprofiler_end;
+#elif IS_OS_WINDOWS
+#define PROFILER_F()                                                                               \
+  Zprofiler_start(__FUNCTION__);                                                                   \
+  OnLeaveScope __on_leave_scope_call_zprofiler_end;
+#endif
 
 #else
 
