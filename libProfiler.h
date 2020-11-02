@@ -156,6 +156,7 @@ myPrintf(const char* szText)
 #include <map>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <sstream>
 #include <vector>
 
@@ -270,79 +271,30 @@ lib_prof_log(const char* format, ...)
 
 #if USE_PROFILER
 
-// Critical Section
-#if IS_OS_WINDOWS
 typedef std::mutex ZCriticalSection_t;
-#elif IS_OS_LINUX
-#include <pthread.h>
-typedef pthread_mutex_t ZCriticalSection_t;
-
-#elif IS_OS_MACOSX
-#import <CoreServices/CoreServices.h>
-typedef MPCriticalRegionID ZCriticalSection_t;
-inline char*
-ZGetCurrentDirectory(int bufLength, char* pszDest)
-{
-  return getcwd(pszDest, bufLength);
-}
-#endif
 
 __inline ZCriticalSection_t*
 NewCriticalSection()
 {
-#if IS_OS_LINUX
-  ZCriticalSection_t* cs = new pthread_mutex_t;
-  pthread_mutex_init(cs, NULL);
-  return cs;
-#elif IS_OS_MACOSX
-  MPCriticalRegionID* criticalRegion = new MPCriticalRegionID;
-  OSStatus err = MPCreateCriticalRegion(criticalRegion);
-  if (err != 0)
-  {
-    delete criticalRegion;
-    criticalRegion = NULL;
-  }
-
-  return criticalRegion;
-#elif IS_OS_WINDOWS
   return new std::mutex();
-#endif
 }
 
 __inline void
 DestroyCriticalSection(ZCriticalSection_t* cs)
 {
-#if IS_OS_LINUX
   delete cs;
-#elif IS_OS_MACOSX
-  MPDeleteCriticalRegion(*cs);
-#elif IS_OS_WINDOWS
-  delete cs;
-#endif
 }
 
 __inline void
 LockCriticalSection(ZCriticalSection_t* cs)
 {
-#if IS_OS_LINUX
-  pthread_mutex_lock(cs);
-#elif IS_OS_MACOSX
-  MPEnterCriticalRegion(*cs, kDurationForever);
-#elif IS_OS_WINDOWS
   cs->lock();
-#endif
 }
 
 __inline void
 UnLockCriticalSection(ZCriticalSection_t* cs)
 {
-#if IS_OS_LINUX
-  pthread_mutex_unlock(cs);
-#elif IS_OS_MACOSX
-  MPExitCriticalRegion(*cs);
-#elif IS_OS_WINDOWS
   cs->unlock();
-#endif
 }
 
 bool
@@ -404,7 +356,7 @@ typedef struct stGenProfilerData
   double averageTime = 0.0;
   double minTime = 0.0;
   double maxTime = 0.0;
-  std::chrono::steady_clock::time_point lastTime; // Time of the previous passage
+  std::chrono::system_clock::time_point lastTime; // Time of the previous passage
   double elapsedTime = 0.0;                       // Elapsed Time
   unsigned long nbCalls = 0;                      // Numbers of calls
   std::string callStack;                          // temporary.
