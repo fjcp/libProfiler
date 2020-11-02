@@ -155,9 +155,9 @@ myPrintf(const char* szText)
 #include <cstdio>
 #include <map>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <thread>
-#include <sstream>
 #include <vector>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

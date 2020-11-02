@@ -11,4 +11,3 @@ public:
   static void myFunction3();
 };
 #endif
-

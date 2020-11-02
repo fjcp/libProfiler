@@ -9,7 +9,6 @@ MyClass::MyClass()
   PROFILER_F();
   std::this_thread::sleep_for(1s);
 }
-  
 
 void
 MyClass::myFunction1()
