@@ -150,6 +150,7 @@ myPrintf(const char* szText)
 // includes
 
 #include <algorithm>
+#include <chrono>
 #include <cstdarg>
 #include <cstdio>
 #include <map>
@@ -242,7 +243,7 @@ myPrintf(const char* szText)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-const std::string  _NAME_SEPARATOR_ = "|";
+const std::string _NAME_SEPARATOR_ = "|";
 const std::string _THREADID_NAME_SEPARATOR_ = "@";
 
 #define _QUOTE(x) #x
@@ -361,15 +362,11 @@ Zprofiler_end();
 void
 LogProfiler();
 
-
 class OnLeaveScope
 {
 public:
   OnLeaveScope() {}
-  ~OnLeaveScope()
-  {
-    Zprofiler_end();
-  }
+  ~OnLeaveScope() { Zprofiler_end(); }
 };
 
 // defines
@@ -436,10 +433,10 @@ typedef struct stGenProfilerData
   double averageTime = 0.0;
   double minTime = 0.0;
   double maxTime = 0.0;
-  double lastTime = 0.0;            // Time of the previous passage
-  double elapsedTime = 0.0;         // Elapsed Time
-  unsigned long nbCalls=0;      // Numbers of calls
-  std::string callStack; // temporary.
+  std::chrono::steady_clock::time_point lastTime;     // Time of the previous passage
+  double elapsedTime = 0.0;  // Elapsed Time
+  unsigned long nbCalls = 0; // Numbers of calls
+  std::string callStack;     // temporary.
 } tdstGenProfilerData;
 
 //  Hold the call stack
@@ -512,8 +509,7 @@ Zprofiler_start(const std::string& profile_name)
 
   // Add the profile name in the callstack vector
   tdstGenProfilerData GenProfilerData;
-//  memset(&GenProfilerData, 0, sizeof(GenProfilerData));
-  GenProfilerData.lastTime = startHighResolutionTimer();
+  GenProfilerData.lastTime = std::chrono::high_resolution_clock::now();
   GenProfilerData.minTime = 0xFFFFFFFF;
 
   // Find or add callstack
@@ -530,14 +526,8 @@ Zprofiler_start(const std::string& profile_name)
   if (IterCallsByThreadMap->second.empty())
   {
     GenProfilerData.nbCalls = 1;
-    GenProfilerData.callStack = std::to_string(ulThreadId) + _THREADID_NAME_SEPARATOR_ + profile_name;
-/*    sprintf(GenProfilerData.szBunchCodeName,
-            "%s%d%s%s",
-            _NAME_SEPARATOR_,
-            (int)ulThreadId,
-            _THREADID_NAME_SEPARATOR_,
-            profile_name.c_str()); 
-            */
+    GenProfilerData.callStack =
+      std::to_string(ulThreadId) + _THREADID_NAME_SEPARATOR_ + profile_name;
     IterCallsByThreadMap->second.push_back(GenProfilerData);
   }
   // It's not the first element of the vector
@@ -552,7 +542,7 @@ Zprofiler_start(const std::string& profile_name)
       IterCallsByThreadMap->second[IterCallsByThreadMap->second.size() - 1].callStack;
 
     // Add the current profile start string
-    GenProfilerData.callStack =  previousString + _NAME_SEPARATOR_ + profile_name;
+    GenProfilerData.callStack = previousString + _NAME_SEPARATOR_ + profile_name;
 
     // Push it
     IterCallsByThreadMap->second.push_back(GenProfilerData);
@@ -586,8 +576,8 @@ Zprofiler_end()
 
   auto GenProfilerData = IterCallsByThreadMap->second[IterCallsByThreadMap->second.size() - 1];
 
-  // Compute elapsed time
-  GenProfilerData.elapsedTime += startHighResolutionTimer() - GenProfilerData.lastTime;
+  // Compute elapsed time 
+  GenProfilerData.elapsedTime += std::chrono::duration<double,std::milli>(std::chrono::high_resolution_clock::now() - GenProfilerData.lastTime).count();
   GenProfilerData.totalTime += GenProfilerData.elapsedTime;
 
   const auto IterMap = mapProfilerGraph.find(GenProfilerData.callStack);
@@ -671,7 +661,7 @@ LogProfiler()
   std::map<std::string, tdstGenProfilerData>::iterator IterMap;
   for (IterMap = mapProfilerGraph.begin(); IterMap != mapProfilerGraph.end(); ++IterMap)
   {
-    IterMap->second.callStack =  IterMap->first;
+    IterMap->second.callStack = IterMap->first;
     tmpCallStack.push_back(IterMap->second);
   }
 
@@ -702,7 +692,7 @@ LogProfiler()
   auto IterThreadIdsCount = ThreadIdsCount.begin();
   for (unsigned long nbThread = 0; nbThread < ThreadIdsCount.size(); nbThread++)
   {
-    szThreadId =  IterThreadIdsCount->first;
+    szThreadId = IterThreadIdsCount->first;
 
     lib_prof_log("CALLSTACK of Thread %s\n", szThreadId.c_str());
     lib_prof_log(
@@ -716,7 +706,7 @@ LogProfiler()
          ++IterTmpCallStack)
     {
       auto code_name_with_thread = IterTmpCallStack->callStack;
-      if( code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
+      if (code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
       {
         auto at_position = code_name_with_thread.find("@");
         auto code_name = code_name_with_thread.substr(at_position + 1);
@@ -737,10 +727,10 @@ LogProfiler()
         auto last_separator = code_name.find_last_of("|");
         if (last_separator != std::string::npos)
         {
-          code_name.replace(0, last_separator+1, "");
+          code_name.replace(0, last_separator + 1, "");
         }
 
-        IterMapCalls = mapCalls.find(szThreadId+_THREADID_NAME_SEPARATOR_+ code_name);
+        IterMapCalls = mapCalls.find(szThreadId + _THREADID_NAME_SEPARATOR_ + code_name);
         if (IterMapCalls != mapCalls.end())
         {
           const auto minTime = IterMapCalls->second.minTime;
@@ -799,7 +789,7 @@ LogProfiler()
   IterThreadIdsCount = ThreadIdsCount.begin();
   for (unsigned long nbThread = 0; nbThread < ThreadIdsCount.size(); nbThread++)
   {
-    szThreadId =  IterThreadIdsCount->first;
+    szThreadId = IterThreadIdsCount->first;
 
     lib_prof_log("DUMP of Thread %s\n", szThreadId.c_str());
     lib_prof_log(
@@ -812,17 +802,17 @@ LogProfiler()
     for (IterMapCalls = mapCalls.begin(); IterMapCalls != mapCalls.end(); ++IterMapCalls)
     {
       auto code_name_with_thread = IterMapCalls->first;
-      if( code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
-      { 
+      if (code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
+      {
         if (IterMapCalls->second.totalTime > MAX_TOTAL_TIME / 100.)
         {
           lib_prof_log("| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
-                        IterMapCalls->second.totalTime,
-                        IterMapCalls->second.averageTime,
-                        IterMapCalls->second.minTime,
-                        IterMapCalls->second.maxTime,
-                        static_cast<int>(IterMapCalls->second.nbCalls),
-                        IterMapCalls->second.callStack.c_str());
+                       IterMapCalls->second.totalTime,
+                       IterMapCalls->second.averageTime,
+                       IterMapCalls->second.minTime,
+                       IterMapCalls->second.maxTime,
+                       static_cast<int>(IterMapCalls->second.nbCalls),
+                       IterMapCalls->second.callStack.c_str());
         }
       }
     }
