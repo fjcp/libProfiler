@@ -154,7 +154,9 @@ myPrintf(const char* szText)
 #include <cstdarg>
 #include <cstdio>
 #include <map>
+#include <mutex>
 #include <string>
+#include <sstream>
 #include <vector>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -270,12 +272,7 @@ lib_prof_log(const char* format, ...)
 
 // Critical Section
 #if IS_OS_WINDOWS
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-typedef CRITICAL_SECTION ZCriticalSection_t;
-
+typedef std::mutex ZCriticalSection_t;
 #elif IS_OS_LINUX
 #include <pthread.h>
 typedef pthread_mutex_t ZCriticalSection_t;
@@ -308,9 +305,7 @@ NewCriticalSection()
 
   return criticalRegion;
 #elif IS_OS_WINDOWS
-  CRITICAL_SECTION* cs = new CRITICAL_SECTION;
-  InitializeCriticalSection(cs);
-  return cs;
+  return new std::mutex();
 #endif
 }
 
@@ -322,7 +317,6 @@ DestroyCriticalSection(ZCriticalSection_t* cs)
 #elif IS_OS_MACOSX
   MPDeleteCriticalRegion(*cs);
 #elif IS_OS_WINDOWS
-  DeleteCriticalSection(cs);
   delete cs;
 #endif
 }
@@ -335,7 +329,7 @@ LockCriticalSection(ZCriticalSection_t* cs)
 #elif IS_OS_MACOSX
   MPEnterCriticalRegion(*cs, kDurationForever);
 #elif IS_OS_WINDOWS
-  EnterCriticalSection(cs);
+  cs->lock();
 #endif
 }
 
@@ -347,7 +341,7 @@ UnLockCriticalSection(ZCriticalSection_t* cs)
 #elif IS_OS_MACOSX
   MPExitCriticalRegion(*cs);
 #elif IS_OS_WINDOWS
-  LeaveCriticalSection(cs);
+  cs->unlock();
 #endif
 }
 
@@ -404,39 +398,16 @@ public:
 #if USE_PROFILER
 #ifdef LIB_PROFILER_IMPLEMENTATION
 
-using namespace std;
-
-void
-TimerInit();
-//#if defined(WIN32)
-double
-startHighResolutionTimer(void);
-
-#if IS_OS_WINDOWS
-// Create A Structure For The Timer Information
-struct
-{
-  __int64 frequency;                 // Timer Frequency
-  float resolution;                  // Timer Resolution
-  unsigned long mm_timer_start;      // Multimedia Timer Start Value
-  unsigned long mm_timer_elapsed;    // Multimedia Timer Elapsed Time
-  bool performance_timer;            // Using The Performance Timer?
-  __int64 performance_timer_start;   // Performance Timer Start Value
-  __int64 performance_timer_elapsed; // Performance Timer Elapsed Time
-} timer;                             // Structure Is Named timer
-
-#endif //  IS_OS_WINDOWS
-
 typedef struct stGenProfilerData
 {
   double totalTime = 0.0;
   double averageTime = 0.0;
   double minTime = 0.0;
   double maxTime = 0.0;
-  std::chrono::steady_clock::time_point lastTime;     // Time of the previous passage
-  double elapsedTime = 0.0;  // Elapsed Time
-  unsigned long nbCalls = 0; // Numbers of calls
-  std::string callStack;     // temporary.
+  std::chrono::steady_clock::time_point lastTime; // Time of the previous passage
+  double elapsedTime = 0.0;                       // Elapsed Time
+  unsigned long nbCalls = 0;                      // Numbers of calls
+  std::string callStack;                          // temporary.
 } tdstGenProfilerData;
 
 //  Hold the call stack
@@ -446,7 +417,7 @@ typedef std::vector<tdstGenProfilerData> tdCallStackType;
 std::map<std::string, tdstGenProfilerData> mapProfilerGraph;
 
 // Hold profiler data vector in function of the thread
-map<unsigned long, tdCallStackType> mapCallsByThread;
+std::map<std::thread::id, tdCallStackType> mapCallsByThread;
 
 // Critical section
 ZCriticalSection_t* gProfilerCriticalSection;
@@ -456,9 +427,6 @@ ZCriticalSection_t* gProfilerCriticalSection;
 bool
 Zprofiler_enable()
 {
-  // Initialize the timer
-  TimerInit();
-
   // Create the mutex
   gProfilerCriticalSection = NewCriticalSection();
   return true;
@@ -480,20 +448,6 @@ Zprofiler_disable()
   // Delete the mutex
   DestroyCriticalSection(gProfilerCriticalSection);
 }
-#if IS_OS_MACOSX
-unsigned long
-GetCurrentThreadId()
-{
-  return 0;
-}
-#elif IS_OS_LINUX
-unsigned long
-GetCurrentThreadId()
-{
-  return pthread_self();
-}
-#endif
-
 //
 // Start the profiling of a bunch of code
 //
@@ -505,7 +459,7 @@ Zprofiler_start(const std::string& profile_name)
 
   LockCriticalSection(gProfilerCriticalSection);
 
-  unsigned long ulThreadId = GetCurrentThreadId();
+  const auto ulThreadId = std::this_thread::get_id();
 
   // Add the profile name in the callstack vector
   tdstGenProfilerData GenProfilerData;
@@ -526,8 +480,10 @@ Zprofiler_start(const std::string& profile_name)
   if (IterCallsByThreadMap->second.empty())
   {
     GenProfilerData.nbCalls = 1;
-    GenProfilerData.callStack =
-      std::to_string(ulThreadId) + _THREADID_NAME_SEPARATOR_ + profile_name;
+    std::stringstream ss;
+    ss << ulThreadId << _THREADID_NAME_SEPARATOR_ << profile_name;
+
+    GenProfilerData.callStack = ss.str();
     IterCallsByThreadMap->second.push_back(GenProfilerData);
   }
   // It's not the first element of the vector
@@ -560,7 +516,7 @@ Zprofiler_end()
   if (gProfilerCriticalSection == nullptr)
     return;
 
-  const unsigned long ulThreadId = GetCurrentThreadId();
+  const auto ulThreadId = std::this_thread::get_id();
 
   // Retrieve the right entry in function of the threadId
   const auto IterCallsByThreadMap = mapCallsByThread.find(ulThreadId);
@@ -576,8 +532,11 @@ Zprofiler_end()
 
   auto GenProfilerData = IterCallsByThreadMap->second[IterCallsByThreadMap->second.size() - 1];
 
-  // Compute elapsed time 
-  GenProfilerData.elapsedTime += std::chrono::duration<double,std::milli>(std::chrono::high_resolution_clock::now() - GenProfilerData.lastTime).count();
+  // Compute elapsed time
+  GenProfilerData.elapsedTime +=
+    std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() -
+                                              GenProfilerData.lastTime)
+      .count();
   GenProfilerData.totalTime += GenProfilerData.elapsedTime;
 
   const auto IterMap = mapProfilerGraph.find(GenProfilerData.callStack);
@@ -653,8 +612,8 @@ LogProfiler()
   ThreadIdsCount.clear();
 
   // Vector for callstack
-  vector<tdstGenProfilerData> tmpCallStack;
-  vector<tdstGenProfilerData>::iterator IterTmpCallStack;
+  std::vector<tdstGenProfilerData> tmpCallStack;
+  std::vector<tdstGenProfilerData>::iterator IterTmpCallStack;
   tmpCallStack.clear();
 
   // Copy map data into a vector in the aim to sort it
@@ -822,87 +781,6 @@ LogProfiler()
     ++IterThreadIdsCount;
   }
 }
-
-////
-////  Gestion des timers
-////
-#if IS_OS_WINDOWS
-
-// Initialize Our Timer (Get It Ready)
-inline void
-TimerInit()
-{
-  memset(&timer, 0, sizeof(timer));
-
-  // Check to see if a performance counter is available
-  // If one is available the timer frequency will be updated
-  QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&timer.frequency));
-  // Performance counter is available, use it instead of the multimedia timer
-  // Get the current time and store it in performance_timer_start
-  QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&timer.performance_timer_start));
-  timer.performance_timer = true; // Set performance timer to true
-
-  // Calculate the timer resolution using the timer frequency
-  timer.resolution =
-    static_cast<float>(static_cast<double>(1.0f) / static_cast<double>(timer.frequency));
-
-  // Set the elapsed time to the current time
-  timer.performance_timer_elapsed = timer.performance_timer_start;
-}
-
-// platform specific get hires times...
-inline double
-startHighResolutionTimer()
-{
-  __int64 time;
-  // Grab the current performance time
-  QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&time));
-
-  // Return the current time minus the start time multiplied
-  // by the resolution and 1000 (To Get MS)
-  return (static_cast<double>(time - timer.performance_timer_start) * timer.resolution) * 1000.0f;
-}
-#elif IS_OS_MACOSX
-
-// Initialize Our Timer (Get It Ready)
-void
-TimerInit()
-{
-}
-
-double
-startHighResolutionTimer()
-{
-  UnsignedWide t;
-  Microseconds(&t);
-  /*time[0] = t.lo;
-   time[1] = t.hi;
-   */
-  double ms = double(t.hi * 1000LU);
-  ms += double(t.lo / 1000LU); //*0.001;
-
-  return ms;
-}
-#else
-
-// Initialize Our Timer (Get It Ready)
-void
-TimerInit()
-{
-}
-
-double
-startHighResolutionTimer()
-{
-  timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts); // Works on Linux
-
-  double ms = double(ts.tv_sec * 1000LU);
-  ms += double(ts.tv_nsec / 1000LU) * 0.001;
-
-  return ms;
-}
-#endif
 
 #endif // LIB_PROFILER_IMPLEMENTATION
 
