@@ -356,7 +356,11 @@ typedef struct stGenProfilerData
   double averageTime = 0.0;
   double minTime = 0.0;
   double maxTime = 0.0;
+#if IS_OS_LINUX
   std::chrono::system_clock::time_point lastTime; // Time of the previous passage
+#elif IS_OS_WINDOWS
+  std::chrono::steady_clock::time_point lastTime; // Time of the previous passage
+#endif
   double elapsedTime = 0.0;                       // Elapsed Time
   unsigned long nbCalls = 0;                      // Numbers of calls
   std::string callStack;                          // temporary.
