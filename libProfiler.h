@@ -64,14 +64,12 @@
 #define LIB_PROFILER_PRINTF myPrintf
 #endif
 
-//#include <boost/algorithm/string.hpp>
-//#include <boost/scope_exit.hpp>
 #include <regex>
 //
 inline void
 myPrintf(const char* szText)
 {
-  printf("Profiler:%s", szText);
+  printf("%s", szText);
 }
 //
 //
