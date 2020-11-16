@@ -65,6 +65,11 @@
 #endif
 
 #include <regex>
+#include <ctime>
+#include <iomanip>
+#include <fstream>
+#include <iostream>
+
 //
 inline void
 myPrintf(const char* szText)
@@ -251,7 +256,7 @@ const std::string _THREADID_NAME_SEPARATOR_ = "@";
 #define QUOTE(x) _QUOTE(x)
 
 inline void
-lib_prof_log(const char* format, ...)
+lib_prof_log( std::ofstream & output_stream, const char* format, ...)
 {
   va_list ptr_arg;
   va_start(ptr_arg, format);
@@ -260,10 +265,20 @@ lib_prof_log(const char* format, ...)
   vsprintf(tmps, format, ptr_arg);
 
   LIB_PROFILER_PRINTF(tmps);
+  output_stream << tmps;
 
   va_end(ptr_arg);
 }
 
+inline std::string
+get_output_file_name()
+{
+  std::ostringstream os;
+  std::time_t t = std::time(nullptr);
+  std::tm tm = *std::localtime(&t);
+  os << "lprofile_" << std::put_time(&tm, "%F-%H_%M_%S") << ".txt";
+  return os.str();
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // critical section
 
@@ -392,8 +407,6 @@ Zprofiler_enable()
 void
 Zprofiler_disable()
 {
-  // Dump to file
-
   // Clear maps
   mapCallsByThread.clear();
   mapProfilerGraph.clear();
@@ -478,7 +491,7 @@ Zprofiler_end()
   // Check if vector is empty
   if (IterCallsByThreadMap->second.empty())
   {
-    lib_prof_log("Il y a une erreur dans le vecteur CallStack !!!\n\n");
+    std::cout << "There is an error in the CallStack vector!!!" << std::endl;
     return;
   }
 
@@ -601,18 +614,20 @@ LogProfiler()
 
   // Retrieve the number of thread ids
   // unsigned long nbThreadIds  = mapProfilerGraph.size();
+  auto output_file_name = get_output_file_name();
+  std::ofstream ofst(output_file_name);
 
   auto IterThreadIdsCount = ThreadIdsCount.begin();
   for (unsigned long nbThread = 0; nbThread < ThreadIdsCount.size(); nbThread++)
   {
     szThreadId = IterThreadIdsCount->first;
 
-    lib_prof_log("CALLSTACK of Thread %s\n", szThreadId.c_str());
-    lib_prof_log(
+    lib_prof_log(ofst, "CALLSTACK of Thread %s\n", szThreadId.c_str());
+    lib_prof_log(ofst, 
       "_______________________________________________________________________________________\n");
-    lib_prof_log(
+    lib_prof_log(ofst, 
       "| Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section\n");
-    lib_prof_log(
+    lib_prof_log(ofst, 
       "_______________________________________________________________________________________\n");
 
     for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
@@ -685,16 +700,16 @@ LogProfiler()
         // Display the name of the bunch code profiled
         if (IterTmpCallStack->totalTime > MAX_TOTAL_TIME / 100.)
         {
-          lib_prof_log("%s%s\n", textLine, code_name.c_str());
+          lib_prof_log(ofst, "%s%s\n", textLine, code_name.c_str());
         }
       }
     }
-    lib_prof_log(
+    lib_prof_log(ofst, 
       "_______________________________________________________________________________________"
       "\n\n");
     ++IterThreadIdsCount;
   }
-  lib_prof_log("\n\n");
+  lib_prof_log(ofst, "\n\n");
 
   //
   //  DUMP CALLS
@@ -704,12 +719,12 @@ LogProfiler()
   {
     szThreadId = IterThreadIdsCount->first;
 
-    lib_prof_log("DUMP of Thread %s\n", szThreadId.c_str());
-    lib_prof_log(
+    lib_prof_log(ofst, "DUMP of Thread %s\n", szThreadId.c_str());
+    lib_prof_log(ofst, 
       "_______________________________________________________________________________________\n");
-    lib_prof_log(
+    lib_prof_log(ofst, 
       "| Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section\n");
-    lib_prof_log(
+    lib_prof_log(ofst, 
       "_______________________________________________________________________________________\n");
 
     for (IterMapCalls = mapCalls.begin(); IterMapCalls != mapCalls.end(); ++IterMapCalls)
@@ -719,7 +734,7 @@ LogProfiler()
       {
         if (IterMapCalls->second.totalTime > MAX_TOTAL_TIME / 100.)
         {
-          lib_prof_log("| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
+          lib_prof_log(ofst, "| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
                        IterMapCalls->second.totalTime,
                        IterMapCalls->second.averageTime,
                        IterMapCalls->second.minTime,
@@ -729,11 +744,12 @@ LogProfiler()
         }
       }
     }
-    lib_prof_log(
+    lib_prof_log(ofst, 
       "_______________________________________________________________________________________"
       "\n\n");
     ++IterThreadIdsCount;
   }
+  ofst.close();
 }
 
 #endif // LIB_PROFILER_IMPLEMENTATION
