@@ -626,7 +626,7 @@ LogProfiler()
     lib_prof_log(ofst, 
       "_______________________________________________________________________________________\n");
     lib_prof_log(ofst, 
-      "| Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section\n");
+      "| Total time   | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
     lib_prof_log(ofst, 
       "_______________________________________________________________________________________\n");
 
@@ -643,7 +643,7 @@ LogProfiler()
 
         // Get times and fill in the display string
         sprintf(textLine,
-                "| %12.4f | %12.4f | %12.4f | %12.4f |%6d  | ",
+                "| %12.1f | %12.1f | %12.1f | %12.1f |%8d  | ",
                 IterTmpCallStack->totalTime,
                 IterTmpCallStack->averageTime,
                 IterTmpCallStack->minTime,
@@ -723,7 +723,7 @@ LogProfiler()
     lib_prof_log(ofst, 
       "_______________________________________________________________________________________\n");
     lib_prof_log(ofst, 
-      "| Total time   | Avg Time     |  Min time    |  Max time    | Calls  | Section\n");
+      "| Total time   | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
     lib_prof_log(ofst, 
       "_______________________________________________________________________________________\n");
 
@@ -734,7 +734,7 @@ LogProfiler()
       {
         if (IterMapCalls->second.totalTime > MAX_TOTAL_TIME / 100.)
         {
-          lib_prof_log(ofst, "| %12.4f | %12.4f | %12.4f | %12.4f | %6d | %s\n",
+          lib_prof_log(ofst, "| %12.1f | %12.1f | %12.1f | %12.1f | %8d | %s\n",
                        IterMapCalls->second.totalTime,
                        IterMapCalls->second.averageTime,
                        IterMapCalls->second.minTime,
