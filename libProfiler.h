@@ -57,18 +57,18 @@
 
 #ifndef LIBPROFILER_H__
 #define LIBPROFILER_H__
-
+//#define LIB_PROFILER_CONFIG_MAIN   //TODO DELETE
 #ifdef LIB_PROFILER_CONFIG_MAIN
 #define USE_PROFILER 1
 #define LIB_PROFILER_IMPLEMENTATION
 #define LIB_PROFILER_PRINTF myPrintf
 #endif
 
-#include <regex>
 #include <ctime>
-#include <iomanip>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <regex>
 
 //
 inline void
@@ -256,7 +256,7 @@ const std::string _THREADID_NAME_SEPARATOR_ = "@";
 #define QUOTE(x) _QUOTE(x)
 
 inline void
-lib_prof_log( std::ofstream & output_stream, const char* format, ...)
+lib_prof_log(std::ofstream& output_stream, const char* format, ...)
 {
   va_list ptr_arg;
   va_start(ptr_arg, format);
@@ -319,7 +319,7 @@ Zprofiler_start(const std::string& profile_name);
 void
 Zprofiler_end();
 void
-LogProfiler();
+LogProfiler(const double MIN_DURATION_TO_REPORT);
 
 class OnLeaveScope
 {
@@ -374,9 +374,9 @@ typedef struct stGenProfilerData
 #elif IS_OS_WINDOWS
   std::chrono::steady_clock::time_point lastTime; // Time of the previous passage
 #endif
-  double elapsedTime = 0.0;                       // Elapsed Time
-  unsigned long nbCalls = 0;                      // Numbers of calls
-  std::string callStack;                          // temporary.
+  double elapsedTime = 0.0;  // Elapsed Time
+  unsigned long nbCalls = 0; // Numbers of calls
+  std::string callStack;     // temporary.
 } tdstGenProfilerData;
 
 //  Hold the call stack
@@ -559,8 +559,9 @@ MyDataSortPredicate(const tdstGenProfilerData un, const tdstGenProfilerData deux
 }
 
 inline void
-LogProfiler()
+LogProfiler(const double total_time_ms)
 {
+  const double MIN_DURATION_TO_REPORT = total_time_ms / 100.;
 
   // Thread Id String
   std::string szThreadId;
@@ -594,15 +595,6 @@ LogProfiler()
   // Sort the vector
   std::sort(tmpCallStack.begin(), tmpCallStack.end(), MyDataSortPredicate);
 
-  auto it_max =
-    std::max_element(tmpCallStack.begin(),
-                     tmpCallStack.end(),
-                     [](const tdstGenProfilerData& data1, const tdstGenProfilerData& data2) {
-                       return data1.totalTime < data2.totalTime;
-                     });
-
-  const auto MAX_TOTAL_TIME = it_max->totalTime;
-
   // Create a map with thread Ids
   for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
        ++IterTmpCallStack)
@@ -617,17 +609,24 @@ LogProfiler()
   auto output_file_name = get_output_file_name();
   std::ofstream ofst(output_file_name);
 
+  lib_prof_log(ofst,
+               "TOTAL EXECUTION TIME: %12.1f s. MINIMUN DURATION TO REPORT %12.f ms\n\n",
+               total_time_ms / 1000.,
+               MIN_DURATION_TO_REPORT);
+
   auto IterThreadIdsCount = ThreadIdsCount.begin();
   for (unsigned long nbThread = 0; nbThread < ThreadIdsCount.size(); nbThread++)
   {
     szThreadId = IterThreadIdsCount->first;
 
     lib_prof_log(ofst, "CALLSTACK of Thread %s\n", szThreadId.c_str());
-    lib_prof_log(ofst, 
+    lib_prof_log(
+      ofst,
       "_______________________________________________________________________________________\n");
-    lib_prof_log(ofst, 
-      "| Total time   | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
-    lib_prof_log(ofst, 
+    lib_prof_log(
+      ofst, "| Total time   | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
+    lib_prof_log(
+      ofst,
       "_______________________________________________________________________________________\n");
 
     for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
@@ -698,13 +697,14 @@ LogProfiler()
           strcat(textLine, "+");
 
         // Display the name of the bunch code profiled
-        if (IterTmpCallStack->totalTime > MAX_TOTAL_TIME / 100.)
+        if (IterTmpCallStack->totalTime > MIN_DURATION_TO_REPORT)
         {
           lib_prof_log(ofst, "%s%s\n", textLine, code_name.c_str());
         }
       }
     }
-    lib_prof_log(ofst, 
+    lib_prof_log(
+      ofst,
       "_______________________________________________________________________________________"
       "\n\n");
     ++IterThreadIdsCount;
@@ -720,11 +720,13 @@ LogProfiler()
     szThreadId = IterThreadIdsCount->first;
 
     lib_prof_log(ofst, "DUMP of Thread %s\n", szThreadId.c_str());
-    lib_prof_log(ofst, 
+    lib_prof_log(
+      ofst,
       "_______________________________________________________________________________________\n");
-    lib_prof_log(ofst, 
-      "| Total time   | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
-    lib_prof_log(ofst, 
+    lib_prof_log(
+      ofst, "| Total time   | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
+    lib_prof_log(
+      ofst,
       "_______________________________________________________________________________________\n");
 
     for (IterMapCalls = mapCalls.begin(); IterMapCalls != mapCalls.end(); ++IterMapCalls)
@@ -732,9 +734,10 @@ LogProfiler()
       auto code_name_with_thread = IterMapCalls->first;
       if (code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
       {
-        if (IterMapCalls->second.totalTime > MAX_TOTAL_TIME / 100.)
+        if (IterMapCalls->second.totalTime > MIN_DURATION_TO_REPORT)
         {
-          lib_prof_log(ofst, "| %12.1f | %12.1f | %12.1f | %12.1f | %8d | %s\n",
+          lib_prof_log(ofst,
+                       "| %12.1f | %12.1f | %12.1f | %12.1f | %8d | %s\n",
                        IterMapCalls->second.totalTime,
                        IterMapCalls->second.averageTime,
                        IterMapCalls->second.minTime,
@@ -744,7 +747,8 @@ LogProfiler()
         }
       }
     }
-    lib_prof_log(ofst, 
+    lib_prof_log(
+      ofst,
       "_______________________________________________________________________________________"
       "\n\n");
     ++IterThreadIdsCount;
@@ -761,12 +765,26 @@ LogProfiler()
 class LibProfilerMain
 {
 public:
-  LibProfilerMain() { PROFILER_ENABLE; }
+  LibProfilerMain()
+  {
+    PROFILER_ENABLE;
+    _start_time = std::chrono::high_resolution_clock::now();
+  }
   ~LibProfilerMain()
   {
-    LogProfiler();
+    auto total_time_ms = std::chrono::duration<double, std::milli>(
+                           std::chrono::high_resolution_clock::now() - _start_time)
+                           .count();
+    LogProfiler(total_time_ms);
     PROFILER_DISABLE;
   }
+
+private:
+#if IS_OS_LINUX
+  std::chrono::system_clock::time_point _start_time;
+#elif IS_OS_WINDOWS
+  std::chrono::steady_clock::time_point _start_time;
+#endif
 };
 
 LibProfilerMain __lib_profiler_main_instance;
