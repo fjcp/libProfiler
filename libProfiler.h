@@ -688,6 +688,7 @@ LogProfiler(const double total_time_ms)
             IterMapCalls->second.maxTime = IterTmpCallStack->maxTime;
           }
           IterMapCalls->second.totalTime += IterTmpCallStack->totalTime;
+          IterMapCalls->second.ownTime += IterTmpCallStack->ownTime;
           IterMapCalls->second.nbCalls += IterTmpCallStack->nbCalls;
           IterMapCalls->second.averageTime =
             IterMapCalls->second.totalTime / IterMapCalls->second.nbCalls;
@@ -699,6 +700,7 @@ LogProfiler(const double total_time_ms)
           tgt.minTime = IterTmpCallStack->minTime;
           tgt.maxTime = IterTmpCallStack->maxTime;
           tgt.totalTime = IterTmpCallStack->totalTime;
+          tgt.ownTime = IterTmpCallStack->ownTime;
           tgt.averageTime = IterTmpCallStack->averageTime;
           tgt.elapsedTime = IterTmpCallStack->elapsedTime;
           tgt.lastTime = IterTmpCallStack->lastTime;
