@@ -334,16 +334,16 @@ public:
 #define PROFILER_END() Zprofiler_end()
 
 #if IS_OS_LINUX
-#define PROFILER_F()                                                                               \
-  Zprofiler_start(__PRETTY_FUNCTION__);                                                            \
+#define PROFILER_F()                                                                                                   \
+  Zprofiler_start(__PRETTY_FUNCTION__);                                                                                \
   OnLeaveScope __on_leave_scope_call_zprofiler_end;
 #elif IS_OS_MACOSX
-#define PROFILER_F()                                                                               \
-  Zprofiler_start(__FUNCTION__);                                                                   \
+#define PROFILER_F()                                                                                                   \
+  Zprofiler_start(__FUNCTION__);                                                                                       \
   OnLeaveScope __on_leave_scope_call_zprofiler_end;
 #elif IS_OS_WINDOWS
-#define PROFILER_F()                                                                               \
-  Zprofiler_start(__FUNCTION__);                                                                   \
+#define PROFILER_F()                                                                                                   \
+  Zprofiler_start(__FUNCTION__);                                                                                       \
   OnLeaveScope __on_leave_scope_call_zprofiler_end;
 #endif
 
@@ -459,8 +459,7 @@ Zprofiler_start(const std::string& profile_name)
 
     // We need to construct the string with the previous value of the
     // profile_start
-    std::string previousString =
-      IterCallsByThreadMap->second[IterCallsByThreadMap->second.size() - 1].callStack;
+    std::string previousString = IterCallsByThreadMap->second[IterCallsByThreadMap->second.size() - 1].callStack;
 
     // Add the current profile start string
     GenProfilerData.callStack = previousString + _NAME_SEPARATOR_ + profile_name;
@@ -499,8 +498,7 @@ Zprofiler_end()
 
   // Compute elapsed time
   GenProfilerData.elapsedTime +=
-    std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() -
-                                              GenProfilerData.lastTime)
+    std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - GenProfilerData.lastTime)
       .count();
   GenProfilerData.totalTime += GenProfilerData.elapsedTime;
 
@@ -597,12 +595,12 @@ LogProfiler(const double total_time_ms)
   {
     double desc_time = 0.0;
     auto no_more_desc = false;
-    auto  call_starts_with = tmpCallStack[i].callStack + '|';
+    auto call_starts_with = tmpCallStack[i].callStack + '|';
 
-    for (size_t j = i+1; j < tmpCallStack.size(); j++)
+    for (size_t j = i + 1; j < tmpCallStack.size(); j++)
     {
-      if (tmpCallStack[j].callStack.compare(0,call_starts_with.length(),call_starts_with) == 0 &&
-          tmpCallStack[j].callStack.find('|',call_starts_with.length()) == std::string::npos)
+      if (tmpCallStack[j].callStack.compare(0, call_starts_with.length(), call_starts_with) == 0 &&
+          tmpCallStack[j].callStack.find('|', call_starts_with.length()) == std::string::npos)
       {
         desc_time += tmpCallStack[j].totalTime;
       }
@@ -611,8 +609,7 @@ LogProfiler(const double total_time_ms)
   }
 
   // Create a map with thread Ids
-  for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
-       ++IterTmpCallStack)
+  for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end(); ++IterTmpCallStack)
   {
     auto threadid_name_pos = IterTmpCallStack->callStack.find_first_of(_THREADID_NAME_SEPARATOR_);
     szThreadId = IterTmpCallStack->callStack.substr(0, threadid_name_pos);
@@ -635,17 +632,17 @@ LogProfiler(const double total_time_ms)
     szThreadId = IterThreadIdsCount->first;
 
     lib_prof_log(ofst, "CALLSTACK of Thread %s\n", szThreadId.c_str());
-    lib_prof_log(
-      ofst,
-      "_____________________________________________________________________________________________________\n");
-    lib_prof_log(
-      ofst, "| Total time   | Own time     | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
-    lib_prof_log(
-      ofst,
-      "_____________________________________________________________________________________________________\n");
+    lib_prof_log(ofst,
+                 "_________________________________________________________________________________"
+                 "____________________\n");
+    lib_prof_log(ofst,
+                 "| Total time   | Own time     | Avg Time     |  Min time    |  Max time    | "
+                 "Calls    | Section\n");
+    lib_prof_log(ofst,
+                 "_________________________________________________________________________________"
+                 "____________________\n");
 
-    for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
-         ++IterTmpCallStack)
+    for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end(); ++IterTmpCallStack)
     {
       auto code_name_with_thread = IterTmpCallStack->callStack;
       if (code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
@@ -690,8 +687,7 @@ LogProfiler(const double total_time_ms)
           IterMapCalls->second.totalTime += IterTmpCallStack->totalTime;
           IterMapCalls->second.ownTime += IterTmpCallStack->ownTime;
           IterMapCalls->second.nbCalls += IterTmpCallStack->nbCalls;
-          IterMapCalls->second.averageTime =
-            IterMapCalls->second.totalTime / IterMapCalls->second.nbCalls;
+          IterMapCalls->second.averageTime = IterMapCalls->second.totalTime / IterMapCalls->second.nbCalls;
         }
         else
         {
@@ -721,9 +717,9 @@ LogProfiler(const double total_time_ms)
         }
       }
     }
-    lib_prof_log(
-      ofst,
-      "_____________________________________________________________________________________________________\n\n");
+    lib_prof_log(ofst,
+                 "_________________________________________________________________________________"
+                 "____________________\n\n");
     ++IterThreadIdsCount;
   }
   lib_prof_log(ofst, "\n");
@@ -737,14 +733,15 @@ LogProfiler(const double total_time_ms)
     szThreadId = IterThreadIdsCount->first;
 
     lib_prof_log(ofst, "DUMP of Thread %s\n", szThreadId.c_str());
-    lib_prof_log(
-      ofst,
-      "_____________________________________________________________________________________________________\n");
-    lib_prof_log(
-      ofst, "| Total time   |  Own Time    |  Avg Time    |  Min time    |  Max time    | Calls    | Section\n");
-    lib_prof_log(
-      ofst,
-      "_____________________________________________________________________________________________________\n");
+    lib_prof_log(ofst,
+                 "_________________________________________________________________________________"
+                 "____________________\n");
+    lib_prof_log(ofst,
+                 "| Total time   |  Own Time    |  Avg Time    |  Min time    |  Max time    | "
+                 "Calls    | Section\n");
+    lib_prof_log(ofst,
+                 "_________________________________________________________________________________"
+                 "____________________\n");
 
     for (IterMapCalls = mapCalls.begin(); IterMapCalls != mapCalls.end(); ++IterMapCalls)
     {
@@ -765,9 +762,9 @@ LogProfiler(const double total_time_ms)
         }
       }
     }
-    lib_prof_log(
-      ofst,
-      "_____________________________________________________________________________________________________\n\n");
+    lib_prof_log(ofst,
+                 "_________________________________________________________________________________"
+                 "____________________\n\n");
     ++IterThreadIdsCount;
   }
   ofst.close();
@@ -789,9 +786,8 @@ public:
   }
   ~LibProfilerMain()
   {
-    auto total_time_ms = std::chrono::duration<double, std::milli>(
-                           std::chrono::high_resolution_clock::now() - _start_time)
-                           .count();
+    auto total_time_ms =
+      std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - _start_time).count();
     LogProfiler(total_time_ms);
     PROFILER_DISABLE;
   }
