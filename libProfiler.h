@@ -211,10 +211,7 @@ myPrintf(const char* szText)
 #define IS_COMPILER_GCC 0
 //#   pragma message("Platform Compiler is Microsoft Visual C++.")
 #elif defined(__GNUC__)
-#define PLATFORM_COMPILER PLATFORM_COMPILER_GCC
-#define PLATFORM_COMPILER_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100)
-#define IS_COMPILER_MSVC 0
-#define IS_COMPILER_GCC 1
+#define PLATFORM_COMPILER PLATFORM_COMPILEcmake
 #pragma message("Platform Compiler is GCC.")
 #else
 #error "This compiler is not supported."
@@ -319,7 +316,7 @@ Zprofiler_start(const std::string& profile_name);
 void
 Zprofiler_end();
 void
-LogProfiler(const double MIN_DURATION_TO_REPORT);
+LogProfiler(const double MIN_TIME_TO_REPORT);
 
 class OnLeaveScope
 {
@@ -366,6 +363,7 @@ public:
 typedef struct stGenProfilerData
 {
   double totalTime = 0.0;
+  double ownTime = 0.0;
   double averageTime = 0.0;
   double minTime = 0.0;
   double maxTime = 0.0;
@@ -561,7 +559,7 @@ MyDataSortPredicate(const tdstGenProfilerData un, const tdstGenProfilerData deux
 inline void
 LogProfiler(const double total_time_ms)
 {
-  const double MIN_DURATION_TO_REPORT = total_time_ms / 100.;
+  const double MIN_TIME_TO_REPORT = total_time_ms / 100.;
 
   // Thread Id String
   std::string szThreadId;
@@ -595,6 +593,23 @@ LogProfiler(const double total_time_ms)
   // Sort the vector
   std::sort(tmpCallStack.begin(), tmpCallStack.end(), MyDataSortPredicate);
 
+  for (size_t i = 0; i < tmpCallStack.size(); i++)
+  {
+    double desc_time = 0.0;
+    auto no_more_desc = false;
+    auto  call_starts_with = tmpCallStack[i].callStack + '|';
+
+    for (size_t j = i+1; j < tmpCallStack.size(); j++)
+    {
+      if (tmpCallStack[j].callStack.compare(0,call_starts_with.length(),call_starts_with) == 0 &&
+          tmpCallStack[j].callStack.find('|',call_starts_with.length()) == std::string::npos)
+      {
+        desc_time += tmpCallStack[j].totalTime;
+      }
+    }
+    tmpCallStack[i].ownTime = tmpCallStack[i].totalTime - desc_time;
+  }
+
   // Create a map with thread Ids
   for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
        ++IterTmpCallStack)
@@ -610,9 +625,9 @@ LogProfiler(const double total_time_ms)
   std::ofstream ofst(output_file_name);
 
   lib_prof_log(ofst,
-               "TOTAL EXECUTION TIME: %12.1f s. MINIMUN DURATION TO REPORT %12.f ms\n\n",
+               "TOTAL EXECUTION TIME: %9.1f s. MINIMUN TIME TO REPORT: %9.f ms.\n\n",
                total_time_ms / 1000.,
-               MIN_DURATION_TO_REPORT);
+               MIN_TIME_TO_REPORT);
 
   auto IterThreadIdsCount = ThreadIdsCount.begin();
   for (unsigned long nbThread = 0; nbThread < ThreadIdsCount.size(); nbThread++)
@@ -622,12 +637,12 @@ LogProfiler(const double total_time_ms)
     lib_prof_log(ofst, "CALLSTACK of Thread %s\n", szThreadId.c_str());
     lib_prof_log(
       ofst,
-      "_______________________________________________________________________________________\n");
+      "_____________________________________________________________________________________________________\n");
     lib_prof_log(
-      ofst, "| Total time   | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
+      ofst, "| Total time   | Own time     | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
     lib_prof_log(
       ofst,
-      "_______________________________________________________________________________________\n");
+      "_____________________________________________________________________________________________________\n");
 
     for (IterTmpCallStack = tmpCallStack.begin(); IterTmpCallStack != tmpCallStack.end();
          ++IterTmpCallStack)
@@ -642,8 +657,9 @@ LogProfiler(const double total_time_ms)
 
         // Get times and fill in the display string
         sprintf(textLine,
-                "| %12.1f | %12.1f | %12.1f | %12.1f |%8d  | ",
+                "| %12.1f | %12.1f | %12.1f | %12.1f | %12.1f |%8d  | ",
                 IterTmpCallStack->totalTime,
+                IterTmpCallStack->ownTime,
                 IterTmpCallStack->averageTime,
                 IterTmpCallStack->minTime,
                 IterTmpCallStack->maxTime,
@@ -697,7 +713,7 @@ LogProfiler(const double total_time_ms)
           strcat(textLine, "+");
 
         // Display the name of the bunch code profiled
-        if (IterTmpCallStack->totalTime > MIN_DURATION_TO_REPORT)
+        if (IterTmpCallStack->totalTime > MIN_TIME_TO_REPORT)
         {
           lib_prof_log(ofst, "%s%s\n", textLine, code_name.c_str());
         }
@@ -705,11 +721,10 @@ LogProfiler(const double total_time_ms)
     }
     lib_prof_log(
       ofst,
-      "_______________________________________________________________________________________"
-      "\n\n");
+      "_____________________________________________________________________________________________________\n\n");
     ++IterThreadIdsCount;
   }
-  lib_prof_log(ofst, "\n\n");
+  lib_prof_log(ofst, "\n");
 
   //
   //  DUMP CALLS
@@ -722,23 +737,24 @@ LogProfiler(const double total_time_ms)
     lib_prof_log(ofst, "DUMP of Thread %s\n", szThreadId.c_str());
     lib_prof_log(
       ofst,
-      "_______________________________________________________________________________________\n");
+      "_____________________________________________________________________________________________________\n");
     lib_prof_log(
-      ofst, "| Total time   | Avg Time     |  Min time    |  Max time    | Calls    | Section\n");
+      ofst, "| Total time   |  Own Time    |  Avg Time    |  Min time    |  Max time    | Calls    | Section\n");
     lib_prof_log(
       ofst,
-      "_______________________________________________________________________________________\n");
+      "_____________________________________________________________________________________________________\n");
 
     for (IterMapCalls = mapCalls.begin(); IterMapCalls != mapCalls.end(); ++IterMapCalls)
     {
       auto code_name_with_thread = IterMapCalls->first;
       if (code_name_with_thread.compare(0, szThreadId.length(), szThreadId) == 0)
       {
-        if (IterMapCalls->second.totalTime > MIN_DURATION_TO_REPORT)
+        if (IterMapCalls->second.totalTime > MIN_TIME_TO_REPORT)
         {
           lib_prof_log(ofst,
-                       "| %12.1f | %12.1f | %12.1f | %12.1f | %8d | %s\n",
+                       "| %12.1f | %12.1f | %12.1f | %12.1f | %12.1f | %8d | %s\n",
                        IterMapCalls->second.totalTime,
+                       IterMapCalls->second.ownTime,
                        IterMapCalls->second.averageTime,
                        IterMapCalls->second.minTime,
                        IterMapCalls->second.maxTime,
@@ -749,8 +765,7 @@ LogProfiler(const double total_time_ms)
     }
     lib_prof_log(
       ofst,
-      "_______________________________________________________________________________________"
-      "\n\n");
+      "_____________________________________________________________________________________________________\n\n");
     ++IterThreadIdsCount;
   }
   ofst.close();
