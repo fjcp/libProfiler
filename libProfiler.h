@@ -599,10 +599,16 @@ LogProfiler(const double total_time_ms)
 
     for (size_t j = i + 1; j < tmpCallStack.size(); j++)
     {
-      if (tmpCallStack[j].callStack.compare(0, call_starts_with.length(), call_starts_with) == 0 &&
-          tmpCallStack[j].callStack.find('|', call_starts_with.length()) == std::string::npos)
+      if (tmpCallStack[j].callStack.compare(0, call_starts_with.length(), call_starts_with) == 0)
       {
-        desc_time += tmpCallStack[j].totalTime;
+        if ( tmpCallStack[j].callStack.find('|', call_starts_with.length()) == std::string::npos)
+        {
+          desc_time += tmpCallStack[j].totalTime;
+        }
+      }
+      else
+      {
+        break;
       }
     }
     tmpCallStack[i].ownTime = tmpCallStack[i].totalTime - desc_time;
