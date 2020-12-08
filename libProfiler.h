@@ -594,7 +594,6 @@ LogProfiler(const double total_time_ms)
   for (size_t i = 0; i < tmpCallStack.size(); i++)
   {
     double desc_time = 0.0;
-    auto no_more_desc = false;
     auto call_starts_with = tmpCallStack[i].callStack + '|';
 
     for (size_t j = i + 1; j < tmpCallStack.size(); j++)
